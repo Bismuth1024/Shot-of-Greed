@@ -1,4 +1,7 @@
-CALL createUser('test', '$2b$10$51gBNr0NxFtnKfSb/J3Pgu0Te6nj366IrkJAaWTM7VGxlbkxup2SO', NULL, '2000-01-01', 'male');
+# password
+CALL createUser('admin', '$2b$10$MkCIstzWubxkWw4c9F6n6.wuu4JHRHARPhgwdL0X6XArPz6BSFAY6', NULL, '2000-01-01', 'male');
+# test
+CALL createUser('test', '$2b$10$/Um7c/QUKWsZmuifiNoJL.hCaPaK0R5Pu.SCrDG7KXmdT9BleAjB.', NULL, '2000-01-01', 'male');
 
 
 CALL createTag('Single Ingredient', 'Drink');

@@ -23,7 +23,7 @@ app.use(bodyParser.json());
 
 // Database connection pool
 const pool = mysql.createPool({
-    host: process.env.DB_HOST, 
+    host: process.env.DB_HOST, // Replace with your DB host
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: 'Yesh',
@@ -66,14 +66,14 @@ const authenticateToken = (required = true) => {
             if (rows.length === 0) {
                 req.authStatus = 'invalid_token';
                 return res.status(401).json({ error_message: 'Unauthorized: Invalid token' });
-            } 
+            }
 
             const [{ user_id, expiry }] = rows;
 
             if (expiry < Date.now()) {
                 req.authStatus = 'expired_token';
                 return res.status(401).json({ error_message: 'Unauthorized: Token expired' });
-            } 
+            }
 
             req.authStatus = 'valid_token';
             req.user_id = user_id;
@@ -88,8 +88,102 @@ const authenticateToken = (required = true) => {
     };
 };
 
+app.post('/api/users', async (req, res) => {
+    const { username, password, email, birthdate, gender } = req.body;
+
+    if (!username || !password) {
+        return res.status(400).send({ error_message: 'Missing username or password' });
+    }
+
+    if (!birthdate || !gender) {
+        return res.status(400).send({ error_message: 'Missing fields' });
+    }
+
+    const connection = await pool.getConnection();
+    try {
+        //First hash the plaintext password
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // Call stored procedure to create a user
+        const [[[{ new_user_id }]]] = await connection.query(
+            'CALL createUser(?, ?, ?, ?, ?)',
+            [username, hashedPassword, email, birthdate, gender]
+        );
+        res.status(201).send({ new_user_id });
+
+    } catch (error) {
+        // Rollback on error
+        await connection.rollback();
+        console.log(error)
+
+        const { sqlMessage, code, errno, sqlState } = error;
+
+        let message = '';
+
+        if (sqlMessage.includes('Users_AK_Email')) {
+            message = 'That email is already taken. Please choose a different email.'
+        } else if (sqlMessage.includes('Users_AK_Username')) {
+            message = 'That username is already taken. Please choose a different username.'
+        }
 
 
+        res.status(500).send({ error_message: message });
+    } finally {
+        connection.release();
+    }
+
+});
+
+app.post('/api/login', async (req, res) => {
+    const { username, password } = req.body;
+
+    const connection = await pool.getConnection();
+
+    try {
+        const [rows] = await connection.query(
+            'SELECT user_id, hashed_password FROM Users WHERE username = ?',
+            [username]
+        );
+
+        console.log(rows);
+
+        //No user of this username found:
+        if (rows.length == 0) {
+            return res.status(401).send({ error_message: 'Invalid username or password (user)' });
+        }
+
+
+        const [{ user_id, hashed_password }] = rows;
+
+        //Check password validity
+        const isValidPassword = await bcrypt.compare(password, hashed_password);
+        if (!isValidPassword) {
+            return res.status(401).send({ error_message: 'Invalid username or password' });
+        }
+
+        // Generate a random token
+        const token = crypto.randomBytes(16).toString('hex');  // Generates a 32-character hexadecimal string
+        const expiryTime = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7); // one week
+
+        const convertedTime = JSDateToSQL(expiryTime); //Convert to mariadb
+        
+        await connection.query(
+            'CALL loginUser(?, ?, ?)',
+            [user_id, token, convertedTime]
+        );
+
+        //Because apple lied and swift iso8601 actually doesnt handle it properly
+        res.status(201).send({ user_id, login_token: token, expiry: JSDateToSwift(expiryTime) });
+
+    } catch (error) {
+        console.log(error);
+        res.status(500).send({ error_message: error.message });
+    } finally {
+        connection.release();
+    }
+
+    
+});
 
 // Create Drink POST API Endpoint
 app.post('/api/drinks', async (req, res) => {
@@ -219,13 +313,14 @@ app.get('/api/drinks', async (req, res) => {
     }
 });
 
+
 //GET ingredients
 app.get('/api/ingredients', authenticateToken(false), async (req, res) => {
     const { tags, name, min_ABV, max_ABV, min_sugar, max_sugar, min_date, max_date, include_public } = req.query;
     const user_id = req.user_id;
     // Build the base SQL query
 
-    let query = 'SELECT * FROM Ingredients WHERE created_user_id'
+    let query = 'SELECT * FROM Ingredients WHERE deleted = FALSE AND created_user_id'
     let queryParams = [];
 
     if (!user_id) {
@@ -280,33 +375,94 @@ app.get('/api/ingredients', authenticateToken(false), async (req, res) => {
     // Execute the query
     const connection = await pool.getConnection();
     try {
-            const [results] = await connection.query(query, queryParams);
+        const [results] = await connection.query(query, queryParams);
 
-            // Modify the result set to rename 'ingredient_id' to 'id'
-            const modifiedResults = results.map(item => {
-                return {
-                    ...item,
-                    id: item.ingredient_id, // Rename 'ingredient_id' to 'id' for Codable Swift
-                    ingredient_id: undefined,
-                    create_time: JSDateToSwift(item.create_time),
-                    ABV: parseFloat(item.ABV), // Convert ABV from string to number
-                    sugarPercent: parseFloat(item.sugar_percent), // Convert sugar_percent from string to number
-                    //TODO : TAGS!!
-                    tags: []
-                };
-            });
+        // Modify the result set to rename 'ingredient_id' to 'id'
+        const modifiedResults = results.map(item => {
+            return {
+                ...item,
+                id: item.ingredient_id, // Rename 'ingredient_id' to 'id' for Codable Swift
+                ingredient_id: undefined,
+                sugar_percent: undefined,
+                deleted: undefined, // Don't include this
+                create_time: JSDateToSwift(item.create_time),
+                ABV: parseFloat(item.ABV), // Convert ABV from string to number
+                sugarPercent: parseFloat(item.sugar_percent), // Convert sugar_percent from string to number
+                //TODO : TAGS!!
+                tags: []
+            };
+        });
 
-            // Return the results with 'id' instead of 'ingredient_id'
-            res.json({ ingredients: modifiedResults });
+        // Return the results with 'id' instead of 'ingredient_id'
+        res.status(200).json({ ingredients: modifiedResults });
 
-        } catch (error) {
-            // Rollback on error
-            await connection.rollback();
-            console.error('Error executing query: ' + error.stack);
-            res.status(500).send({ error_message: error.message });
-        } finally {
-            connection.release();
-        }
+    } catch (error) {
+        // Rollback on error
+        await connection.rollback();
+        console.error('Error executing query: ' + error.stack);
+        res.status(500).send({ error_message: error.message });
+    } finally {
+        connection.release();
+    }
+});
+
+
+app.post('/api/ingredients', authenticateToken(true), async (req, res) => {
+    const { description = null, name, ABV, sugarPercent, tags } = req.body;
+    const user_id = req.user_id;
+
+    if (!name || !ABV || !sugarPercent) {
+        return res.status(400).send({ error_message: 'Missing parameters' });
+    }
+
+    const connection = await pool.getConnection();
+
+    try {
+        const [[[{ new_ingredient_id }]]] = await connection.query(
+            'CALL createIngredient(?, ?, ?, ?, ?)',
+            [name, ABV, description, sugarPercent, user_id]
+        );
+        res.status(201).send({ new_ingredient_id });
+
+    } catch (error) {
+        console.log(error)
+
+        const { sqlMessage, code, errno, sqlState } = error;
+
+        res.status(500).send({ error_message: sqlMessage });
+        
+    } finally {
+        connection.release();
+    }
+});
+
+app.delete('/api/ingredients', authenticateToken(true), async (req, res) => {
+    const { id } = req.query;
+    const user_id = req.user_id;
+
+    if (!id) {
+        return res.status(400).send({ error_message: 'Missing ID of the ingredient to delete' });
+    }
+
+    const connection = await pool.getConnection();
+
+    try {
+        await connection.query(
+            'CALL deleteIngredient(?, ?)',
+            [id, user_id]
+        );
+        res.status(204).send();
+
+    } catch (error) {
+        console.log(error)
+
+        const { sqlMessage, code, errno, sqlState } = error;
+
+        res.status(500).send({ error_message: sqlMessage });
+        
+    } finally {
+        connection.release();
+    }
 });
 
 app.get('/api/tags', async (req, res) => {
@@ -330,135 +486,6 @@ app.get('/api/tags', async (req, res) => {
         connection.release();
     }
 });
-
-app.post('/api/users', async (req, res) => {
-    const { username, password, email, birthdate, gender } = req.body;
-
-    if (!username || !password) {
-        return res.status(400).send({ error_message: 'Missing username or password' });
-    }
-
-    if (!birthdate || !gender) {
-        return res.status(400).send({ error_message: 'Missing fields' });
-    }
-
-    const connection = await pool.getConnection();
-    try {
-        //First hash the plaintext password
-        const hashedPassword = await bcrypt.hash(password, 10);
-
-        // Call stored procedure to create a user
-        const [[[{ new_user_id }]]] = await connection.query(
-            'CALL createUser(?, ?, ?, ?, ?)',
-            [username, hashedPassword, email, birthdate, gender]
-        );
-        res.status(201).send({ new_user_id });
-
-    } catch (error) {
-        // Rollback on error
-        await connection.rollback();
-        console.log(error)
-
-        const { sqlMessage, code, errno, sqlState } = error;
-
-        let message = '';
-
-        if (sqlMessage.includes('Users_AK_Email')) {
-            message = 'That email is already taken. Please choose a different email.'
-        } else if (sqlMessage.includes('Users_AK_Username')) {
-            message = 'That username is already taken. Please choose a different username.'
-        }
-
-
-        res.status(500).send({ error_message: message });
-    } finally {
-        connection.release();
-    }
-
-});
-
-app.post('/api/login', async (req, res) => {
-    const { username, password } = req.body;
-
-    const connection = await pool.getConnection();
-
-    try {
-        const [rows] = await connection.query(
-            'SELECT user_id, hashed_password FROM Users WHERE username = ?',
-            [username]
-        );
-
-        console.log(rows);
-
-        //No user of this username found:
-        if (rows.length == 0) {
-            return res.status(401).send({ error_message: 'Invalid username or password (user)' });
-        }
-
-
-        const [{ user_id, hashed_password }] = rows;
-
-        //Check password validity
-        const isValidPassword = await bcrypt.compare(password, hashed_password);
-        if (!isValidPassword) {
-            return res.status(401).send({ error_message: 'Invalid username or password' });
-        }
-
-        // Generate a random token
-        const token = crypto.randomBytes(16).toString('hex');  // Generates a 32-character hexadecimal string
-        const expiryTime = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7); // one week
-
-        const convertedTime = JSDateToSQL(expiryTime); //Convert to mariadb
-        
-        await connection.query(
-            'CALL loginUser(?, ?, ?)',
-            [user_id, token, convertedTime]
-        );
-
-        //Because apple lied and swift iso8601 actually doesnt handle it properly
-        res.status(201).send({ user_id, login_token: token, expiry: JSDateToSwift(expiryTime) });
-
-    } catch (error) {
-        console.log(error);
-        res.status(500).send({ error_message: error.message });
-    } finally {
-        connection.release();
-    }
-
-    
-});
-
-app.post('/api/ingredients', authenticateToken(false), async (req, res) => {
-    const { description = null, name, ABV, sugarPercent, user_id, tags } = req.body;
-
-    const create_time = JSDateToSQL(Date.now());
-
-    const connection = await pool.getConnection();
-
-    try {
-        await connection.beginTransaction();
-        const [[[{ new_ingredient_id }]]] = await connection.query(
-            'CALL createIngredient(?, ?, ?, ?, ?, ?)',
-            [name, ABV, description, sugarPercent, user_id, create_time]
-        );
-
-    } catch (error) {
-        await connection.rollback();
-        console.log(error)
-
-        const { sqlMessage, code, errno, sqlState } = error;
-
-        res.status(500).send({ error_message: sqlMessage });
-        
-    } finally {
-        connection.release();
-    }
-
-
-});
-
-
-
 
 // Start the server
 https.createServer(sslOptions, app).listen(3000, () => {

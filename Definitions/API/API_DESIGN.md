@@ -105,3 +105,71 @@ If a valid token is provided, the API will also return the private ingredients f
 - max_date
 - include_public: set to true if you want to include the public ingredients too. This parameter is not checked if no auth token is provided, as only public ingredients are returned.
 
+#### Response
+
+- 200: successfully fetched ingredients
+    - ingredients: array of JSON Ingredient objects with:
+        - name
+        - ABV
+        - sugarPercent
+        - created_user_id
+        - create_time
+        - id
+        - description: potentially null
+        - tags: **TODO**
+
+#### Notes
+
+- Maybe add support for searching for partial matches to a name soon.
+- Tags are still a work in progress
+
+### POST /ingredients
+
+#### Description
+
+Creates a new ingredient
+
+**Authentication: REQUIRED**
+We need authentication as the new ingredient will be saved under the relevant user.
+
+#### Body Parameters
+
+- name
+- ABV
+- sugarPercent
+- description: optional
+
+#### Response
+
+- 201: successfully created
+    - new_ingredient_id
+- 400: missing some of the required parameters
+    - error_message
+    
+#### Notes
+
+- Tags are still a work in progress
+
+### DELETE /ingredients
+
+#### Description
+
+Deletes a user-created ingredient
+
+**Authentication: REQUIRED**
+We need authentication as the ingredient to delete belongs to a specific user
+
+#### Body Parameters
+
+- id: ID of the ingredient to delete
+
+#### Response
+
+- 204: successfully deleted
+- 400: missing ingredient ID
+    
+#### Notes
+
+- Ingredient is not actually deleted from database - the deleted flag is just set. See database design file for reasoning
+
+        

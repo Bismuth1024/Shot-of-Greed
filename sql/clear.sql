@@ -22,3 +22,4 @@ drop procedure addIngredientToDrink;
 drop procedure createUser;
 drop procedure loginUser;
 drop procedure addTagToIngredient;
+drop procedure deleteIngredient;

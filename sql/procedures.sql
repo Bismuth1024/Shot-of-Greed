@@ -61,8 +61,7 @@ DELIMITER //
 CREATE PROCEDURE createDrink (
 	IN p_name VARCHAR(50),
 	IN p_description VARCHAR(1024),
-	IN p_created_user_id INT,
-	IN p_create_time DATETIME
+	IN p_created_user_id INT
 )
 MODIFIES SQL DATA
 BEGIN
@@ -71,13 +70,9 @@ BEGIN
 		SET p_created_user_id = 1;
 	END IF;
 
-	IF p_create_time IS NULL THEN
-		SET p_create_time = CURRENT_TIMESTAMP;
-	END IF;
-
 	-- Insert drink
-	INSERT INTO Drinks (name, description, created_user_id, create_time)
-	VALUES (p_name, p_description, p_created_user_id, p_create_time);
+	INSERT INTO Drinks (name, description, created_user_id)
+	VALUES (p_name, p_description, p_created_user_id);
 
 	IF ROW_COUNT() = 0 THEN
 	    SIGNAL SQLSTATE '45000'
@@ -99,7 +94,7 @@ CREATE PROCEDURE addIngredientToDrink (
 )
 MODIFIES SQL DATA
 BEGIN
-	INSERT INTO Drinks (ingredient_id, drink_id, volume)
+	INSERT INTO DrinkIngredients (ingredient_id, drink_id, volume)
 	VALUES (p_ingredient_id, p_drink_id, p_volume);
 END //
 DELIMITER ;
@@ -242,6 +237,7 @@ END //
 DELIMITER ;
 
 #-------------------------------------------------------------------------------------------------------
+
 DELIMITER //
 
 CREATE PROCEDURE createIngredient(
@@ -249,8 +245,7 @@ CREATE PROCEDURE createIngredient(
 	IN p_ABV DECIMAL(5,2),
 	IN p_description VARCHAR(1024),
 	IN p_sugar_percent DECIMAL(5,2),
-	IN p_created_user_id INT,
-	IN p_create_time DATETIME
+	IN p_created_user_id INT
 )
 
 MODIFIES SQL DATA
@@ -260,12 +255,8 @@ BEGIN
 		SET p_created_user_id = 1;
 	END IF;
 
-	IF p_create_time IS NULL THEN
-		SET p_create_time = CURRENT_TIMESTAMP;
-	END IF;
-
-	INSERT INTO Ingredients (name, ABV, description, sugar_percent, created_user_id, create_time)
-	VALUES (p_name, p_ABV, p_description, p_sugar_percent, p_created_user_id, p_create_time);
+	INSERT INTO Ingredients (name, ABV, description, sugar_percent, created_user_id)
+	VALUES (p_name, p_ABV, p_description, p_sugar_percent, p_created_user_id);
 
 	IF ROW_COUNT() = 0 THEN
 	    SIGNAL SQLSTATE '45000'
@@ -276,6 +267,32 @@ BEGIN
 END //
 
 DELIMITER ;
+
+#-------------------------------------------------------------------------------------------------------
+
+DELIMITER //
+
+CREATE PROCEDURE deleteIngredient(
+	IN p_ingredient_id INT,
+	IN p_user_id INT
+)
+
+MODIFIES SQL DATA
+
+BEGIN
+	UPDATE Ingredients
+	SET deleted = true
+	WHERE ingredient_id = p_ingredient_id AND created_user_id = p_user_id;
+
+	IF ROW_COUNT() = 0 THEN
+	    SIGNAL SQLSTATE '45000'
+		SET MESSAGE_TEXT = 'No ingredient under this user with that ID exists';
+	END IF;
+
+END //
+
+DELIMITER ;
+
 #-------------------------------------------------------------------------------------------------------
 
 DELIMITER //
