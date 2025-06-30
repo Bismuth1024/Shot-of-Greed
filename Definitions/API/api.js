@@ -208,6 +208,10 @@ app.post('/api/drinks', authenticateToken(true), async (req, res) => {
 
     const { name, description = null, ingredients } = drink;
 
+    if (!name || !ingredients) {
+        return res.status(400).send({ error_message: 'Missing some of the required parameters' });
+    }
+
     const connection = await pool.getConnection();
     try {
         // Start a transaction

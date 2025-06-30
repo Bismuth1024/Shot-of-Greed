@@ -149,6 +149,7 @@ We need authentication as the new ingredient will be saved under the relevant us
 #### Notes
 
 - Tags are still a work in progress
+- Since only those body parameters are required, the JSON of the Ingredient from Swift can be directly sent to this endpoint
 
 ### DELETE /ingredients
 
@@ -216,3 +217,48 @@ If a valid token is provided, the API will also return the private drinks for th
 - Tags are still a work in progress
 - Add support for filtering based on whether the drinks contain given ingredients.
 
+### POST /drinks
+
+#### Description
+
+Creates a new drink
+
+**Authentication: REQUIRED**
+We need authentication as the new drink will be saved under the relevant user.
+
+#### Body Parameters
+
+- drink: JSON drink
+
+#### Response
+
+- 201: successfully created
+    - new_drink_id
+- 400: missing some of the required parameters
+    - error_message
+    
+#### Notes
+
+- Tags are still a work in progress
+
+### DELETE /drinks
+
+#### Description
+
+Deletes a user-created drinks
+
+**Authentication: REQUIRED**
+We need authentication as the drink to delete belongs to a specific user
+
+#### Body Parameters
+
+- id: ID of the drink to delete
+
+#### Response
+
+- 204: successfully deleted
+- 400: missing ingredient ID
+    
+#### Notes
+
+- Drink is not actually deleted from database - the deleted flag is just set. See database design file for reasoning

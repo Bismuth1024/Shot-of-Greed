@@ -2,3 +2,5 @@ Some of the filtering i might do client/swift side.
 e.g. filtering for tags? may be faster
 
 CHECK NULL INSTEAD OF !param - in case zero
+
+keep API design consistent - some endpoints return/take individual fields, some use a whole JSON object, make these the same
