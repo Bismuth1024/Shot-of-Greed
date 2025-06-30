@@ -1,0 +1,148 @@
+App - Swift, SwiftUI
+API - Node.js
+Database - MariaDB
+
+
+Database contains the following tables, mostly self explanatory:
+
+Users
+Drinks
+Ingredients
+DrinkIngredients (links together)
+Tags
+DrinkTags
+IngredientTags
+Sessions
+SessionDrinks
+
+Note that this may not seem that elegant. Since, for example, a Drink contains an array of Ingredients, it might seem better
+to use something like MongoDB. However, I wanted to be able to naturally make queries like 
+'How many standards worth of Vodka in the last month for this user'. So this is the best database structure that I can come up with.
+
+In addition we also have these views for convenience:
+
+DrinksInfo - rows contain the drink name, the ingredient, volume, as well as all the id's etc
+
+DrinksOverview - rows contain drink name, id's etc, and number of standards and sugar amount
+
+We also have some stored procedures which will be the only way that the app interacts with the database - no direct access.
+
+createUser
+createDrink
+createTag
+
+
+but the question remains, the procedures will accept arguments like varchar, int, etc.
+But if we want to create objects like drinks, ingredients, JSON is better - we can have arrays etc.
+So I am thinking to have the REST API work with JSON and 'translate' to SQL.
+e.g. REST API receives a request to create a drink as a json object
+and then makes the required procedure calls to the SQL server.
+
+In order to create a drink, what do we need to do in the SQL server?
+
+-Add a row to the Drinks table identifying the user, create time, etc
+-Per ingredient, add a row to DrinkIngredients
+-Per tag, add a row to DrinkTags
+
+So I am thinking to have a procedure for each of these. Something like
+createDrink
+addDrinkIngredient
+addDrinkTag
+or something.
+
+Important point is to separate the app and the database, both should only deal with the rest API. 
+e.g. the app shouldn't have to know about sql stuff and id's etc, if we want to delete a drink we should
+be able to go 'delete the drink i made called XXX' and the rest api handles it and either says ok or not found
+
+Alternatively we can have some coupling? e.g. Drinks and Ingredients in Swift are Identifiable, we could
+have the ID match that of the database's drink/ingredient _id column.
+
+
+
+3 Entities as shown at the very top
+
+User App <-1-> REST API <-2-> Database
+
+1: 
+
+define API endpoints to be used by the app.
+
+drinks:
+	GET - get all drinks matching the filter criteria
+		user
+		tags
+		name
+		min_standards
+		max_standards
+		min_sugar
+		max_sugar
+		min_ingredients
+		max_ingredients
+		min_date
+		max_date
+		ingredient_ids (contained ingredient ids, comma separated list)
+
+	POST - create a drink
+		user
+
+		body:
+			Drink encoded into JSON
+
+		response:
+			{
+				"status"
+				"message" or "drink_id"
+			}
+
+
+	DELETE 
+		id
+
+ingredients:
+	GET
+		user
+		tags
+		name
+		min_ABV
+		max_ABV
+		min_sugar
+		max_sugar
+		min_date
+		max_date
+
+	POST
+		user
+
+		body:
+			Ingredient in JSON
+
+		response:
+			{
+				"status"
+				"message" or "drink_id"
+			}
+
+	DELETE
+		id
+
+sessions:
+	GET
+		user
+		min_date
+		max_date
+
+	POST
+		user
+
+		body:
+			Session in JSON
+
+
+
+
+
+
+
+
+
+
