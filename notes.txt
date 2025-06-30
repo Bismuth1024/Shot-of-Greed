@@ -1,0 +1,4 @@
+Some of the filtering i might do client/swift side.
+e.g. filtering for tags? may be faster
+
+CHECK NULL INSTEAD OF !param - in case zero

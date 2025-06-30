@@ -65,11 +65,6 @@ CREATE PROCEDURE createDrink (
 )
 MODIFIES SQL DATA
 BEGIN
-
-	IF p_created_user_id IS NULL THEN
-		SET p_created_user_id = 1;
-	END IF;
-
 	-- Insert drink
 	INSERT INTO Drinks (name, description, created_user_id)
 	VALUES (p_name, p_description, p_created_user_id);
@@ -101,7 +96,28 @@ DELIMITER ;
 
 #-------------------------------------------------------------------------------------------------------
 
+DELIMITER //
 
+CREATE PROCEDURE deleteDrink(
+	IN p_drink_id INT,
+	IN p_user_id INT
+)
+
+MODIFIES SQL DATA
+
+BEGIN
+	UPDATE Drinks
+	SET deleted = true
+	WHERE drink_id = p_drink_id AND created_user_id = p_user_id;
+
+	IF ROW_COUNT() = 0 THEN
+	    SIGNAL SQLSTATE '45000'
+		SET MESSAGE_TEXT = 'No drink under this user with that ID exists';
+	END IF;
+
+END //
+
+DELIMITER ;
 
 #-------------------------------------------------------------------------------------------------------
 

@@ -185,11 +185,28 @@ app.post('/api/login', async (req, res) => {
     
 });
 
-// Create Drink POST API Endpoint
-app.post('/api/drinks', async (req, res) => {
-    const { drink } = req.body;
+function formatIngredient(raw) {
+    return {
+        ...raw,
+        id: raw.ingredient_id, // Rename 'ingredient_id' to 'id' for Codable Swift
+        ingredient_id: undefined,
+        sugar_percent: undefined,
+        deleted: undefined, // Don't include this
+        create_time: JSDateToSwift(raw.create_time),
+        ABV: parseFloat(raw.ABV), // Convert ABV from string to number
+        sugarPercent: parseFloat(raw.sugar_percent), // Convert sugar_percent from string to number
+        //TODO : TAGS!!
+        tags: []
+    };
+}
 
-    const { name, created_user_id, description = null, ingredients } = drink;
+// Create Drink POST API Endpoint
+app.post('/api/drinks', authenticateToken(true), async (req, res) => {
+    const { drink } = req.body;
+    const user_id = req.user_id;
+    console.log(drink);
+
+    const { name, description = null, ingredients } = drink;
 
     const connection = await pool.getConnection();
     try {
@@ -198,8 +215,8 @@ app.post('/api/drinks', async (req, res) => {
 
         // Call stored procedure to create a drink
         const [[[{ new_drink_id }]]] = await connection.query(
-            'CALL createDrink(?, ?, ?, NULL)',
-            [name, description, created_user_id]
+            'CALL createDrink(?, ?, ?)',
+            [name, description, user_id]
         );
 
         // Add ingredients to the drink
@@ -207,7 +224,7 @@ app.post('/api/drinks', async (req, res) => {
             const { ingredientType: { id: ingredient_id }, volume } = ingredient;
             await connection.query(
                 'CALL addIngredientToDrink(?, ?, ?)',
-                [ingredient_id, drink_id, volume]
+                [ingredient_id, new_drink_id, volume]
             );
         }
 
@@ -237,17 +254,40 @@ app.post('/api/drinks', async (req, res) => {
     }
 });
 
-app.get('/api/drinks', async (req, res) => {
-    const { user_id, tags, name, min_standards, max_standards, min_sugar, max_sugar, min_ingredients, max_ingredients, min_date, max_date, ingredient_ids } = req.query;
-    
-    // Build the base SQL query
-    let query = 'SELECT * FROM DrinksOverview WHERE 1=1';
+app.get('/api/drinks', authenticateToken(false), async (req, res) => {
+    const {tags, name, min_standards, max_standards, min_sugar, max_sugar, min_ingredients, max_ingredients, min_date, max_date, ingredient_ids, include_public } = req.query;
+    const user_id = req.user_id;
+    let query = `
+        SELECT 
+            d.drink_id AS drink_id,
+            d.name AS drink_name,
+            d.create_time AS drink_time,
+            i.ingredient_id AS ingredient_id,
+            i.name AS ingredient_name,
+            i.ABV AS ingredient_ABV,
+            i.sugar_percent AS ingredient_sugar,
+            i.created_user_id AS ingredient_user,
+            i.create_time AS ingredient_time,
+            i.description AS ingredient_description,
+            di.volume AS volume
+        FROM DrinksOverview d
+        JOIN DrinkIngredients di ON d.drink_id = di.drink_id
+        JOIN Ingredients i ON di.ingredient_id = i.ingredient_id
+        WHERE d.deleted = FALSE AND d.created_user_id
+    `
     let queryParams = [];
-    
-    // Add conditions based on query parameters
-    if (user_id) {
-        query += ' AND created_user_id = ?';
-        queryParams.push(user_id);
+
+    if (!user_id) {
+        // Unauthenticated case: only return public ingredients
+        query += ' = 1';
+    } else {
+        // Authenticated case
+        if (include_public === 'true') {
+            query += ' IN (1, ?)'
+        } else {
+            query += ' = ?';
+        }
+        queryParams.push(user_id)
     }
     
     //DEAL WITH TAGS NEXT!!!! TODO
@@ -302,12 +342,86 @@ app.get('/api/drinks', async (req, res) => {
     // Execute the query
     const connection = await pool.getConnection();
     try {
-        const [results] = await connection.query(query, queryParams);
-        res.json(results); // Return the results as JSON
+        const [rows] = await connection.query(query, queryParams);
+        const drinksMap = new Map();
+
+        for (const row of rows) {
+
+            const {
+                drink_id,
+                drink_name,
+                drink_time,
+                ingredient_id,
+                ingredient_name,
+                ingredient_ABV,
+                ingredient_sugar,
+                ingredient_user,
+                ingredient_time,
+                ingredient_tags,
+                ingredient_description,
+                volume
+            } = row;
+
+            if (!drinksMap.has(drink_id)) {
+                drinksMap.set(drink_id, {
+                    id: drink_id,
+                    create_time: drink_time,
+                    name: drink_name,
+                    ingredients: []
+                });
+            }
+
+            drinksMap.get(drink_id).ingredients.push({
+                "ingredientType": formatIngredient({
+                    ingredient_id: ingredient_id,
+                    name: ingredient_name,
+                    sugar_percent: ingredient_sugar,
+                    ABV: ingredient_ABV,
+                    create_time: ingredient_time,
+                    created_user_id: ingredient_user,
+                    description: ingredient_description,
+                    tags: ingredient_tags,
+                }),
+                
+                "volume": volume
+            });
+        }
+
+        const drinks = Array.from(drinksMap.values());
+
+        res.status(200).json(drinks); // Return the results as JSON
     } catch (error) {
-        // Rollback on error
-        console.error('Error executing query: ' + err.stack);
+        console.error('Error executing query: ' + error.stack);
         res.status(500).send({ error_message: error.message });
+    } finally {
+        connection.release();
+    }
+});
+
+app.delete('/api/drinks', authenticateToken(true), async (req, res) => {
+    const { id } = req.query;
+    const user_id = req.user_id;
+
+    if (!id) {
+        return res.status(400).send({ error_message: 'Missing ID of the drink to delete' });
+    }
+
+    const connection = await pool.getConnection();
+
+    try {
+        await connection.query(
+            'CALL deleteDrink(?, ?)',
+            [id, user_id]
+        );
+        res.status(204).send();
+
+    } catch (error) {
+        console.log(error)
+
+        const { sqlMessage, code, errno, sqlState } = error;
+
+        res.status(500).send({ error_message: sqlMessage });
+        
     } finally {
         connection.release();
     }
@@ -379,18 +493,7 @@ app.get('/api/ingredients', authenticateToken(false), async (req, res) => {
 
         // Modify the result set to rename 'ingredient_id' to 'id'
         const modifiedResults = results.map(item => {
-            return {
-                ...item,
-                id: item.ingredient_id, // Rename 'ingredient_id' to 'id' for Codable Swift
-                ingredient_id: undefined,
-                sugar_percent: undefined,
-                deleted: undefined, // Don't include this
-                create_time: JSDateToSwift(item.create_time),
-                ABV: parseFloat(item.ABV), // Convert ABV from string to number
-                sugarPercent: parseFloat(item.sugar_percent), // Convert sugar_percent from string to number
-                //TODO : TAGS!!
-                tags: []
-            };
+            return formatIngredient(item);
         });
 
         // Return the results with 'id' instead of 'ingredient_id'
@@ -410,6 +513,10 @@ app.get('/api/ingredients', authenticateToken(false), async (req, res) => {
 app.post('/api/ingredients', authenticateToken(true), async (req, res) => {
     const { description = null, name, ABV, sugarPercent, tags } = req.body;
     const user_id = req.user_id;
+
+    console.log(name);
+    console.log(ABV);
+    console.log(sugarPercent);
 
     if (!name || !ABV || !sugarPercent) {
         return res.status(400).send({ error_message: 'Missing parameters' });

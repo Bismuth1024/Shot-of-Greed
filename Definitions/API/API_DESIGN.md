@@ -172,4 +172,47 @@ We need authentication as the ingredient to delete belongs to a specific user
 
 - Ingredient is not actually deleted from database - the deleted flag is just set. See database design file for reasoning
 
-        
+## Drinks
+
+### GET /drinks
+
+#### Description
+
+Fetches drinks (as JSON) that match the filter criteria.
+
+**Authentication: Optional**
+If a valid token is provided, the API will also return the private drinks for this user. Otherwise, only public drinks are returned.
+
+#### Query Parameters
+
+- name: exact match
+- min_standards
+- max_standards
+- min_sugar
+- max_sugar
+- min_ingredients: count of ingredients
+- max_ingredients
+- min_date: earliest allowed creation date
+- max_date
+- include_public: set to true if you want to include the public drinks too. This parameter is not checked if no auth token is provided, as only public drinks are returned.
+
+#### Response
+
+- 200: successfully fetched drinks
+    - ingredients: array of JSON Drink objects with:
+        - name
+        - created_user_id
+        - create_time
+        - id
+        - description: potentially null
+        - tags: **TODO**
+        - ingredients: array
+            - volume
+            - ingredient: JSON Ingredient object
+
+#### Notes
+
+- Maybe add support for searching for partial matches to a name soon.
+- Tags are still a work in progress
+- Add support for filtering based on whether the drinks contain given ingredients.
+

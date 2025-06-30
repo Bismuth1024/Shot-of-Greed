@@ -3,6 +3,7 @@ API - Node.js
 Database - MariaDB
 
 
+
 Database contains the following tables, mostly self explanatory:
 
 Users

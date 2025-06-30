@@ -128,7 +128,8 @@ SELECT
     d.create_time AS create_time, 
     i.ingredient_id AS ingredient_id, 
     i.name AS ingredient, 
-    di.volume AS volume
+    di.volume AS volume,
+    d.deleted AS deleted
 FROM 
     Drinks d
 LEFT JOIN 
@@ -149,7 +150,8 @@ SELECT
     d.create_time AS create_time,
     COUNT(i.ingredient_id) AS n_ingredients,
     ROUND(SUM(di.volume * i.ABV * 0.785 / 1000), 3) AS n_standards,
-    ROUND(SUM(di.volume * i.sugar_percent / 100), 2) AS sugar_g
+    ROUND(SUM(di.volume * i.sugar_percent / 100), 2) AS sugar_g,
+    d.deleted AS deleted
 FROM 
     Drinks d
 LEFT JOIN 
