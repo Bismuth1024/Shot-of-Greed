@@ -4,3 +4,7 @@ e.g. filtering for tags? may be faster
 CHECK NULL INSTEAD OF !param - in case zero
 
 keep API design consistent - some endpoints return/take individual fields, some use a whole JSON object, make these the same
+
+It's currently ok to make a new drink using deleted ingredients - remember that the only point of deleting is to hide it from the user in the UI
+
+Maybe add support for creating sessions offline and uploading later.

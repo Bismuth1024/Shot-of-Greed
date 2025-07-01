@@ -42,7 +42,7 @@ Logins are managed via tokens that are linked to a user. When a user logs in, a 
 
 ### Ingredients
 
-Contains info about every ingredient. Ingredients are tied to a user creator so that we can make sure users can only edit/delete their own ingredients. When a user edits or deletes a drink, it is not actually edited or deleted - instead, the deleted flag is set, so this old version/deleted version is not displayed to the user any more. This is so that the old info on the ingredient can still be used for historical queries.
+Contains info about every ingredient. Ingredients are tied to a user creator so that we can make sure users can only edit/delete their own ingredients. When a user edits or deletes a drink, it is not actually edited or deleted - instead, the deleted time is set, so this old version/deleted version is not displayed to the user any more. This is so that the old info on the ingredient can still be used for historical queries.
 
 ### Drinks
 

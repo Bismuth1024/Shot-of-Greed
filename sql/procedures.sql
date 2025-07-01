@@ -107,7 +107,7 @@ MODIFIES SQL DATA
 
 BEGIN
 	UPDATE Drinks
-	SET deleted = true
+	SET delete_time = CURRENT_TIMESTAMP
 	WHERE drink_id = p_drink_id AND created_user_id = p_user_id;
 
 	IF ROW_COUNT() = 0 THEN
@@ -121,6 +121,190 @@ DELIMITER ;
 
 #-------------------------------------------------------------------------------------------------------
 
+DELIMITER //
+
+CREATE PROCEDURE createTag(
+	IN p_name VARCHAR(50),
+	IN p_type ENUM('Drink', 'Ingredient')
+)
+
+MODIFIES SQL DATA
+
+BEGIN
+
+INSERT IGNORE INTO  Tags (name, type)
+VALUES (p_name, p_type);
+IF ROW_COUNT() = 0 THEN
+    SIGNAL SQLSTATE '45000'
+    SET MESSAGE_TEXT = 'Tag of that name and type (ingredient/drink) already exists';
+END IF;
+
+END //
+DELIMITER ;
+
+#-------------------------------------------------------------------------------------------------------
+
+DELIMITER //
+
+CREATE PROCEDURE createIngredient(
+	IN p_name VARCHAR(50),
+	IN p_ABV DECIMAL(5,2),
+	IN p_description VARCHAR(1024),
+	IN p_sugar_percent DECIMAL(5,2),
+	IN p_created_user_id INT
+)
+
+MODIFIES SQL DATA
+
+BEGIN
+	IF p_created_user_id IS NULL THEN
+		SET p_created_user_id = 1;
+	END IF;
+
+	INSERT INTO Ingredients (name, ABV, description, sugar_percent, created_user_id)
+	VALUES (p_name, p_ABV, p_description, p_sugar_percent, p_created_user_id);
+
+	IF ROW_COUNT() = 0 THEN
+	    SIGNAL SQLSTATE '45000'
+    	SET MESSAGE_TEXT = 'New ingredient could not be created (maybe naming conflict?)';
+	END IF;
+
+	SELECT LAST_INSERT_ID() as new_ingredient_id;
+END //
+
+DELIMITER ;
+
+#-------------------------------------------------------------------------------------------------------
+
+DELIMITER //
+
+CREATE PROCEDURE deleteIngredient(
+	IN p_ingredient_id INT,
+	IN p_user_id INT
+)
+
+MODIFIES SQL DATA
+
+BEGIN
+	UPDATE Ingredients
+	SET delete_time = CURRENT_TIMESTAMP
+	WHERE ingredient_id = p_ingredient_id AND created_user_id = p_user_id;
+
+	IF ROW_COUNT() = 0 THEN
+	    SIGNAL SQLSTATE '45000'
+		SET MESSAGE_TEXT = 'No ingredient under this user with that ID exists';
+	END IF;
+
+END //
+
+DELIMITER ;
+
+#-------------------------------------------------------------------------------------------------------
+
+DELIMITER //
+
+CREATE PROCEDURE addTagToIngredient(
+	IN p_ingredient_id INT,
+	IN p_tag_name VARCHAR(50)
+)
+MODIFIES SQL DATA
+
+BEGIN
+	DECLARE p_tag_id INT;
+
+	SELECT tag_id
+	INTO p_tag_id 
+	FROM Tags
+	WHERE name = p_tag_name AND type = 'Ingredient'
+	LIMIT 1;
+
+	IF p_tag_id IS NULL THEN
+		SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Error: Tag not found';
+	END IF;
+
+	INSERT INTO IngredientTags (ingredient_id, tag_id)
+        VALUES (p_ingredient_id, p_tag_id);
+
+END //
+
+DELIMITER ;
+
+#-------------------------------------------------------------------------------------------------------
+
+DELIMITER //
+
+CREATE PROCEDURE createSession(
+	IN p_user_id INT
+)
+
+MODIFIES SQL DATA
+
+BEGIN
+	INSERT INTO Sessions (created_user_id)
+	VALUES (p_user_id)
+
+	IF ROW_COUNT() = 0 THEN
+	    SIGNAL SQLSTATE '45000'
+    	SET MESSAGE_TEXT = 'New session could not be created (idk why?)';
+	END IF;
+
+	SELECT LAST_INSERT_ID() as new_session_id;
+END //
+
+DELIMITER ;
+
+------------------------------------------------------------------------------------------
+
+DELIMITER //
+
+CREATE PROCEDURE addDrinkToSession(
+	IN p_session_id,
+	IN p_drink_id,
+	IN p_quantity,
+	IN p_start_time,
+	IN p_end_time
+)
+
+MODIFIES SQL DATA
+
+BEGIN
+	INSERT INTO SessionDrinks (session_id, drink_id, quantity, start_time, end_time)
+	VALUES (p_session_id, p_drink_id, p_quantity, p_start_time, p_end_time)
+
+	IF ROW_COUNT() = 0 THEN
+	    SIGNAL SQLSTATE '45000'
+    	SET MESSAGE_TEXT = 'New session drink could not be logged (idk why?)';
+	END IF;
+
+	SELECT LAST_INSERT_ID() as new_pairing_id; # so that we can save it in the UI
+END //
+
+DELIMITER ;
+
+------------------------------------------------------------------------------------------
+
+DELIMITER //
+
+CREATE PROCEDURE removeDrinkFromSession(
+	IN p_pairing_id INT
+)
+
+MODIFIES SQL DATA
+
+BEGIN
+	DELETE FROM SessionDrinks
+	WHERE pairing_id = p_pairing_id
+
+	IF ROW_COUNT() = 0 THEN
+	    SIGNAL SQLSTATE '45000'
+    	SET MESSAGE_TEXT = 'Drink could not be deleted from session (probably bad ID)';
+	END IF;
+END //
+
+DELIMITER ;
+
+------------------------------------------------------------------------------------------
 
 DELIMITER //
 
@@ -233,86 +417,6 @@ DELIMITER ;
 
 DELIMITER //
 
-CREATE PROCEDURE createTag(
-	IN p_name VARCHAR(50),
-	IN p_type ENUM('Drink', 'Ingredient')
-)
-
-MODIFIES SQL DATA
-
-BEGIN
-
-INSERT IGNORE INTO  Tags (name, type)
-VALUES (p_name, p_type);
-IF ROW_COUNT() = 0 THEN
-    SIGNAL SQLSTATE '45000'
-    SET MESSAGE_TEXT = 'Tag of that name and type (ingredient/drink) already exists';
-END IF;
-
-END //
-DELIMITER ;
-
-#-------------------------------------------------------------------------------------------------------
-
-DELIMITER //
-
-CREATE PROCEDURE createIngredient(
-	IN p_name VARCHAR(50),
-	IN p_ABV DECIMAL(5,2),
-	IN p_description VARCHAR(1024),
-	IN p_sugar_percent DECIMAL(5,2),
-	IN p_created_user_id INT
-)
-
-MODIFIES SQL DATA
-
-BEGIN
-	IF p_created_user_id IS NULL THEN
-		SET p_created_user_id = 1;
-	END IF;
-
-	INSERT INTO Ingredients (name, ABV, description, sugar_percent, created_user_id)
-	VALUES (p_name, p_ABV, p_description, p_sugar_percent, p_created_user_id);
-
-	IF ROW_COUNT() = 0 THEN
-	    SIGNAL SQLSTATE '45000'
-    	SET MESSAGE_TEXT = 'New ingredient could not be created (maybe naming conflict?)';
-	END IF;
-
-	SELECT LAST_INSERT_ID() as new_ingredient_id;
-END //
-
-DELIMITER ;
-
-#-------------------------------------------------------------------------------------------------------
-
-DELIMITER //
-
-CREATE PROCEDURE deleteIngredient(
-	IN p_ingredient_id INT,
-	IN p_user_id INT
-)
-
-MODIFIES SQL DATA
-
-BEGIN
-	UPDATE Ingredients
-	SET deleted = true
-	WHERE ingredient_id = p_ingredient_id AND created_user_id = p_user_id;
-
-	IF ROW_COUNT() = 0 THEN
-	    SIGNAL SQLSTATE '45000'
-		SET MESSAGE_TEXT = 'No ingredient under this user with that ID exists';
-	END IF;
-
-END //
-
-DELIMITER ;
-
-#-------------------------------------------------------------------------------------------------------
-
-DELIMITER //
-
 CREATE PROCEDURE createIngredientTemp(
 	IN p_name VARCHAR(50),
 	IN p_ABV DECIMAL(5,2),
@@ -400,35 +504,3 @@ END //
 
 DELIMITER ;
 
-#-------------------------------------------------------------------------------------------------------
-
-DELIMITER //
-
-CREATE PROCEDURE addTagToIngredient(
-	IN p_ingredient_id INT,
-	IN p_tag_name VARCHAR(50)
-)
-MODIFIES SQL DATA
-
-BEGIN
-	DECLARE p_tag_id INT;
-
-	SELECT tag_id
-	INTO p_tag_id 
-	FROM Tags
-	WHERE name = p_tag_name AND type = 'Ingredient'
-	LIMIT 1;
-
-	IF p_tag_id IS NULL THEN
-		SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = 'Error: Tag not found';
-	END IF;
-
-	INSERT INTO IngredientTags (ingredient_id, tag_id)
-        VALUES (p_ingredient_id, p_tag_id);
-
-END //
-
-DELIMITER ;
-
-#-------------------------------------------------------------------------------------------------------

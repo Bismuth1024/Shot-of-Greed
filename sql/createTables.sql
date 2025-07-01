@@ -28,9 +28,9 @@ CREATE TABLE Drinks (
   description VARCHAR(1024) DEFAULT NULL,
   created_user_id INT NOT NULL DEFAULT 1,
   create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  deleted BOOLEAN NOT NULL DEFAULT FALSE,
+  delete_time DATETIME NULL DEFAULT NULL,
   PRIMARY KEY (drink_id),
-  CONSTRAINT Drinks_AK_Name_User UNIQUE (name, created_user_id),
+  CONSTRAINT Drinks_AK_Name_User UNIQUE (name, created_user_id, delete_time),
   INDEX Drinks_IDX_Created_User (created_user_id),
   CONSTRAINT Drinks_FK_Created_User FOREIGN KEY (created_user_id) 
       REFERENCES Users (user_id) ON DELETE CASCADE ON UPDATE CASCADE
@@ -44,9 +44,9 @@ CREATE TABLE Ingredients (
   sugar_percent DECIMAL(5,2) NOT NULL CHECK (sugar_percent BETWEEN 0 AND 100),
   created_user_id INT NOT NULL,
   create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  deleted BOOLEAN NOT NULL DEFAULT FALSE,
+  delete_time DATETIME NULL DEFAULT NULL,
   PRIMARY KEY (ingredient_id),
-  CONSTRAINT Ingredients_AK_Name_User UNIQUE (name, created_user_id),
+  CONSTRAINT Ingredients_AK_Name_User UNIQUE (name, created_user_id, delete_time),
   INDEX Ingredients_IDX_Created_User (created_user_id),
   CONSTRAINT Ingredients_FK_Created_User FOREIGN KEY (created_user_id) 
       REFERENCES Users (user_id) ON DELETE CASCADE ON UPDATE CASCADE
@@ -99,7 +99,7 @@ CREATE TABLE IngredientTags (
 CREATE TABLE Sessions (
   session_id INT NOT NULL AUTO_INCREMENT,
   created_user_id INT NOT NULL,
-  start_time DATETIME NOT NULL,
+  start_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   end_time DATETIME NULL,
   PRIMARY KEY (session_id),
   INDEX IDX_User (created_user_id),
@@ -129,7 +129,7 @@ SELECT
     i.ingredient_id AS ingredient_id, 
     i.name AS ingredient, 
     di.volume AS volume,
-    d.deleted AS deleted
+    d.delete_time AS delete_time
 FROM 
     Drinks d
 LEFT JOIN 
@@ -151,7 +151,7 @@ SELECT
     COUNT(i.ingredient_id) AS n_ingredients,
     ROUND(SUM(di.volume * i.ABV * 0.785 / 1000), 3) AS n_standards,
     ROUND(SUM(di.volume * i.sugar_percent / 100), 2) AS sugar_g,
-    d.deleted AS deleted
+    d.delete_time AS delete_time
 FROM 
     Drinks d
 LEFT JOIN 

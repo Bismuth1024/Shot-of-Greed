@@ -40,6 +40,39 @@ function JSDateToSwift(date) {
     return date.toISOString().split('.')[0] + 'Z';
 }
 
+function HTTPerror(code, message) {
+    return { code: code, message: message, isHTTPError: true }
+}
+
+function handleAPIerror(res, error) {
+    console.log(JSON.stringify(error))
+    if (error.isHTTPError) {
+        return res.status(error.code).json({ error_message: error.message });
+    }
+
+    const { sqlMessage } = error;
+    console.error('Internal server error:', error);
+    console.log(sqlMessage)
+
+    let message = '';
+
+    if (sqlMessage === undefined) {
+        message = 'Unknown internal server error'
+    } else if (sqlMessage.includes('Users_AK_Email')) {
+        message = 'That email is already taken. Please choose a different email.'
+    } else if (sqlMessage.includes('Users_AK_Username')) {
+        message = 'That username is already taken. Please choose a different username.'
+    } else if (sqlMessage.includes('Drinks_AK_Name_User')) {
+        message = 'This user already has a drink of this name'
+    } else if (sqlMessage.includes('Ingredients_AK_Name_User')) {
+        message = 'This user already has an ingredient of this name'
+    } else {
+        message = 'Unknown internal server error'
+    }
+
+    return res.status(500).json({ error_message: message });
+}
+
 const authenticateToken = (required = true) => {
     return async (req, res, next) => {
         const authHeader = req.headers['authorization'];
@@ -49,7 +82,7 @@ const authenticateToken = (required = true) => {
 
         if (!token) {
             if (required) {
-                return res.status(401).json({ error_message: 'Unauthorized: No token provided' });
+                throw HTTPerror(401, 'Unauthorized: No token provided');
             } else {
                 return next(); // Allow unauthenticated access
             }
@@ -65,14 +98,14 @@ const authenticateToken = (required = true) => {
 
             if (rows.length === 0) {
                 req.authStatus = 'invalid_token';
-                return res.status(401).json({ error_message: 'Unauthorized: Invalid token' });
+                throw HTTPerror(401, 'Unauthorized: Invalid token');
             }
 
             const [{ user_id, expiry }] = rows;
 
             if (expiry < Date.now()) {
                 req.authStatus = 'expired_token';
-                return res.status(401).json({ error_message: 'Unauthorized: Token expired' });
+                throw HTTPerror(401, 'Unauthorized: Token expired');
             }
 
             req.authStatus = 'valid_token';
@@ -80,23 +113,26 @@ const authenticateToken = (required = true) => {
             return next();
         
         } catch (error) {
-            console.error(error);
-            return res.status(500).json({ error_message: 'Internal error while authenticating' });
+            handleAPIerror(res, error);
         } finally {
             connection.release();
         }
     };
 };
 
+app.get('/api/rtt', async (req, res) => {
+    res.status(200).send();
+});
+
 app.post('/api/users', async (req, res) => {
     const { username, password, email, birthdate, gender } = req.body;
 
-    if (!username || !password) {
-        return res.status(400).send({ error_message: 'Missing username or password' });
+    if (username === undefined || password === undefined) {
+        throw HTTPerror(400, 'Missing username or password');
     }
 
-    if (!birthdate || !gender) {
-        return res.status(400).send({ error_message: 'Missing fields' });
+    if (birthdate === undefined || gender === undefined) {
+        throw HTTPerror(400, 'Missing fields');
     }
 
     const connection = await pool.getConnection();
@@ -112,22 +148,7 @@ app.post('/api/users', async (req, res) => {
         res.status(201).send({ new_user_id });
 
     } catch (error) {
-        // Rollback on error
-        await connection.rollback();
-        console.log(error)
-
-        const { sqlMessage, code, errno, sqlState } = error;
-
-        let message = '';
-
-        if (sqlMessage.includes('Users_AK_Email')) {
-            message = 'That email is already taken. Please choose a different email.'
-        } else if (sqlMessage.includes('Users_AK_Username')) {
-            message = 'That username is already taken. Please choose a different username.'
-        }
-
-
-        res.status(500).send({ error_message: message });
+        handleAPIerror(res, error);
     } finally {
         connection.release();
     }
@@ -137,6 +158,10 @@ app.post('/api/users', async (req, res) => {
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
 
+    if (username === undefined || password === undefined) {
+        throw HTTPerror(401, 'Username or password missing');
+    }
+
     const connection = await pool.getConnection();
 
     try {
@@ -145,20 +170,17 @@ app.post('/api/login', async (req, res) => {
             [username]
         );
 
-        console.log(rows);
-
         //No user of this username found:
         if (rows.length == 0) {
-            return res.status(401).send({ error_message: 'Invalid username or password (user)' });
+            throw HTTPerror(401, 'Invalid username or password (user)')
         }
-
 
         const [{ user_id, hashed_password }] = rows;
 
         //Check password validity
         const isValidPassword = await bcrypt.compare(password, hashed_password);
         if (!isValidPassword) {
-            return res.status(401).send({ error_message: 'Invalid username or password' });
+            throw HTTPerror(401, 'Invalid username or password (user)')
         }
 
         // Generate a random token
@@ -176,8 +198,7 @@ app.post('/api/login', async (req, res) => {
         res.status(201).send({ user_id, login_token: token, expiry: JSDateToSwift(expiryTime) });
 
     } catch (error) {
-        console.log(error);
-        res.status(500).send({ error_message: error.message });
+        handleAPIerror(res, error)
     } finally {
         connection.release();
     }
@@ -191,7 +212,7 @@ function formatIngredient(raw) {
         id: raw.ingredient_id, // Rename 'ingredient_id' to 'id' for Codable Swift
         ingredient_id: undefined,
         sugar_percent: undefined,
-        deleted: undefined, // Don't include this
+        delete_time: undefined, // Don't include this
         create_time: JSDateToSwift(raw.create_time),
         ABV: parseFloat(raw.ABV), // Convert ABV from string to number
         sugarPercent: parseFloat(raw.sugar_percent), // Convert sugar_percent from string to number
@@ -204,12 +225,11 @@ function formatIngredient(raw) {
 app.post('/api/drinks', authenticateToken(true), async (req, res) => {
     const { drink } = req.body;
     const user_id = req.user_id;
-    console.log(drink);
 
     const { name, description = null, ingredients } = drink;
 
-    if (!name || !ingredients) {
-        return res.status(400).send({ error_message: 'Missing some of the required parameters' });
+    if (name === undefined || !Array.isArray(ingredients) || ingredients.length == 0) {
+        throw HTTPerror(401, 'Missing some of the required parameters')
     }
 
     const connection = await pool.getConnection();
@@ -223,12 +243,19 @@ app.post('/api/drinks', authenticateToken(true), async (req, res) => {
             [name, description, user_id]
         );
 
+
         // Add ingredients to the drink
         for (const ingredient of ingredients) {
-            const { ingredientType: { id: ingredient_id }, volume } = ingredient;
+            const { ingredientType, volume } = ingredient;
+            console.log(ingredientType)
+            const { id } = ingredientType;
+
+            if (id === undefined || volume === undefined) {
+                throw HTTPerror(401, 'One of the ingredients is invalid ');
+            }
             await connection.query(
                 'CALL addIngredientToDrink(?, ?, ?)',
-                [ingredient_id, new_drink_id, volume]
+                [id, new_drink_id, volume]
             );
         }
 
@@ -252,7 +279,7 @@ app.post('/api/drinks', authenticateToken(true), async (req, res) => {
     } catch (error) {
         // Rollback on error
         await connection.rollback();
-        res.status(500).send({ error_message: error.message });
+        handleAPIerror(res, error);
     } finally {
         connection.release();
     }
@@ -277,7 +304,7 @@ app.get('/api/drinks', authenticateToken(false), async (req, res) => {
         FROM DrinksOverview d
         JOIN DrinkIngredients di ON d.drink_id = di.drink_id
         JOIN Ingredients i ON di.ingredient_id = i.ingredient_id
-        WHERE d.deleted = FALSE AND d.created_user_id
+        WHERE d.delete_time IS NULL AND d.created_user_id
     `
     let queryParams = [];
 
@@ -395,8 +422,7 @@ app.get('/api/drinks', authenticateToken(false), async (req, res) => {
 
         res.status(200).json(drinks); // Return the results as JSON
     } catch (error) {
-        console.error('Error executing query: ' + error.stack);
-        res.status(500).send({ error_message: error.message });
+        handleAPIerror(res, error);
     } finally {
         connection.release();
     }
@@ -407,7 +433,7 @@ app.delete('/api/drinks', authenticateToken(true), async (req, res) => {
     const user_id = req.user_id;
 
     if (!id) {
-        return res.status(400).send({ error_message: 'Missing ID of the drink to delete' });
+        throw HTTPerror(400, 'Missing ID of the drink to delete')
     }
 
     const connection = await pool.getConnection();
@@ -420,12 +446,7 @@ app.delete('/api/drinks', authenticateToken(true), async (req, res) => {
         res.status(204).send();
 
     } catch (error) {
-        console.log(error)
-
-        const { sqlMessage, code, errno, sqlState } = error;
-
-        res.status(500).send({ error_message: sqlMessage });
-        
+        handleAPIerror(res, error);
     } finally {
         connection.release();
     }
@@ -438,7 +459,7 @@ app.get('/api/ingredients', authenticateToken(false), async (req, res) => {
     const user_id = req.user_id;
     // Build the base SQL query
 
-    let query = 'SELECT * FROM Ingredients WHERE deleted = FALSE AND created_user_id'
+    let query = 'SELECT * FROM Ingredients WHERE delete_time IS NULL AND created_user_id'
     let queryParams = [];
 
     if (!user_id) {
@@ -504,10 +525,7 @@ app.get('/api/ingredients', authenticateToken(false), async (req, res) => {
         res.status(200).json({ ingredients: modifiedResults });
 
     } catch (error) {
-        // Rollback on error
-        await connection.rollback();
-        console.error('Error executing query: ' + error.stack);
-        res.status(500).send({ error_message: error.message });
+        handleAPIerror(res, error);
     } finally {
         connection.release();
     }
@@ -518,12 +536,8 @@ app.post('/api/ingredients', authenticateToken(true), async (req, res) => {
     const { description = null, name, ABV, sugarPercent, tags } = req.body;
     const user_id = req.user_id;
 
-    console.log(name);
-    console.log(ABV);
-    console.log(sugarPercent);
-
     if (!name || !ABV || !sugarPercent) {
-        return res.status(400).send({ error_message: 'Missing parameters' });
+        throw HTTPerror(400, 'Missing some of the required parameters');
     }
 
     const connection = await pool.getConnection();
@@ -536,12 +550,7 @@ app.post('/api/ingredients', authenticateToken(true), async (req, res) => {
         res.status(201).send({ new_ingredient_id });
 
     } catch (error) {
-        console.log(error)
-
-        const { sqlMessage, code, errno, sqlState } = error;
-
-        res.status(500).send({ error_message: sqlMessage });
-        
+        handleAPIerror(res, error);
     } finally {
         connection.release();
     }
@@ -552,7 +561,7 @@ app.delete('/api/ingredients', authenticateToken(true), async (req, res) => {
     const user_id = req.user_id;
 
     if (!id) {
-        return res.status(400).send({ error_message: 'Missing ID of the ingredient to delete' });
+        throw HTTPerror(400, 'Missing ID of the ingredient to delete');
     }
 
     const connection = await pool.getConnection();
@@ -565,12 +574,7 @@ app.delete('/api/ingredients', authenticateToken(true), async (req, res) => {
         res.status(204).send();
 
     } catch (error) {
-        console.log(error)
-
-        const { sqlMessage, code, errno, sqlState } = error;
-
-        res.status(500).send({ error_message: sqlMessage });
-        
+        handleAPIerror(res, error);
     } finally {
         connection.release();
     }
