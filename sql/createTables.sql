@@ -175,9 +175,9 @@ SELECT
         TIMESTAMPDIFF(HOUR, s.start_time, COALESCE(s.end_time, NOW())), ' hours, ',
         MOD(TIMESTAMPDIFF(MINUTE, s.start_time, COALESCE(s.end_time, NOW())), 60), ' minutes'
     ) AS duration,
-    SUM(sd.quantity) AS n_drinks,
-    ROUND(SUM(do.n_standards * sd.quantity), 3) AS total_standards,
-    ROUND(SUM(do.sugar_g * sd.quantity), 2) AS total_sugar
+    COALESCE(SUM(sd.quantity), 0) AS n_drinks,
+    COALESCE(ROUND(SUM(do.n_standards * sd.quantity), 3), 0) AS total_standards,
+    COALESCE(ROUND(SUM(do.sugar_g * sd.quantity), 2), 0) AS total_sugar
 FROM
     Sessions s
 LEFT JOIN 

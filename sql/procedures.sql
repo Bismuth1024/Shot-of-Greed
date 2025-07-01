@@ -242,7 +242,7 @@ MODIFIES SQL DATA
 
 BEGIN
 	INSERT INTO Sessions (created_user_id)
-	VALUES (p_user_id)
+	VALUES (p_user_id);
 
 	IF ROW_COUNT() = 0 THEN
 	    SIGNAL SQLSTATE '45000'
@@ -259,18 +259,18 @@ DELIMITER ;
 DELIMITER //
 
 CREATE PROCEDURE addDrinkToSession(
-	IN p_session_id,
-	IN p_drink_id,
-	IN p_quantity,
-	IN p_start_time,
-	IN p_end_time
+	IN p_session_id INT,
+	IN p_drink_id INT,
+	IN p_quantity INT,
+	IN p_start_time DATETIME,
+	IN p_end_time DATETIME
 )
 
 MODIFIES SQL DATA
 
 BEGIN
 	INSERT INTO SessionDrinks (session_id, drink_id, quantity, start_time, end_time)
-	VALUES (p_session_id, p_drink_id, p_quantity, p_start_time, p_end_time)
+	VALUES (p_session_id, p_drink_id, p_quantity, p_start_time, p_end_time);
 
 	IF ROW_COUNT() = 0 THEN
 	    SIGNAL SQLSTATE '45000'
@@ -287,18 +287,53 @@ DELIMITER ;
 DELIMITER //
 
 CREATE PROCEDURE removeDrinkFromSession(
-	IN p_pairing_id INT
+	IN p_pairing_id INT,
+	IN p_user_id INT
 )
 
 MODIFIES SQL DATA
 
 BEGIN
+	# Check that this sessiondrink pairing belongs to the user's session
+	IF NOT EXISTS (
+		SELECT 1 FROM SessionDrinks sd
+		JOIN Sessions s ON sd.session_id = s.session_id
+		WHERE s.created_user_id = p_user_id
+		AND sd.pairing_id = p_pairing_id
+	) THEN
+		SIGNAL SQLSTATE '45000'
+		SET MESSAGE_TEXT = 'The session drink is invalid or does not belong to the given user';
+	END IF;
+
 	DELETE FROM SessionDrinks
-	WHERE pairing_id = p_pairing_id
+	WHERE pairing_id = p_pairing_id;
 
 	IF ROW_COUNT() = 0 THEN
 	    SIGNAL SQLSTATE '45000'
     	SET MESSAGE_TEXT = 'Drink could not be deleted from session (probably bad ID)';
+	END IF;
+END //
+
+DELIMITER ;
+
+------------------------------------------------------------------------------------------
+
+DELIMITER //
+
+CREATE PROCEDURE deleteSession(
+	IN p_session_id INT,
+	IN p_user_id INT
+)
+
+MODIFIES SQL DATA
+
+BEGIN
+	DELETE FROM Sessions
+	WHERE session_id = p_session_id AND created_user_id = p_user_id;
+
+	IF ROW_COUNT() = 0 THEN
+	    SIGNAL SQLSTATE '45000'
+    	SET MESSAGE_TEXT = 'Session could not be deleted or does not belong to the given user';
 	END IF;
 END //
 

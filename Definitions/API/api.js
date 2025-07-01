@@ -308,7 +308,7 @@ app.get('/api/drinks', authenticateToken(false), async (req, res) => {
     `
     let queryParams = [];
 
-    if (!user_id) {
+    if (user_id === undefined) {
         // Unauthenticated case: only return public ingredients
         query += ' = 1';
     } else {
@@ -323,47 +323,47 @@ app.get('/api/drinks', authenticateToken(false), async (req, res) => {
     
     //DEAL WITH TAGS NEXT!!!! TODO
     
-    if (name) {
+    if (name !== undefined) {
         query += ' AND name = ?';
         queryParams.push(name);
     }
     
-    if (min_standards) {
+    if (min_standards !== undefined) {
         query += ' AND n_standards >= ?';
         queryParams.push(min_standards);
     }
     
-    if (max_standards) {
+    if (max_standards !== undefined) {
         query += ' AND n_standards <= ?';
         queryParams.push(min_standards);
     }
     
-    if (min_sugar) {
+    if (min_suga !== undefinedr) {
         query += ' AND sugar_g >= ?';
         queryParams.push(min_sugar);
     }
     
-    if (max_sugar) {
+    if (max_sugar !== undefined) {
         query += ' AND sugar_g <= ?';
         queryParams.push(max_sugar);
     }
     
-    if (min_ingredients) {
+    if (min_ingredients !== undefined) {
         query += ' AND n_ingredients >= ?';
         queryParams.push(min_ingredients);
     }
     
-    if (max_ingredients) {
+    if (max_ingredients !== undefined) {
         query += ' AND n_ingredients <= ?';
         queryParams.push(max_ingredients);
     }
     
-    if (min_date) {
+    if (min_date !== undefined) {
         query += ' AND create_time >= ?';
         queryParams.push(min_date);  // Ensure this is in the correct format, e.g., 'YYYY-MM-DD'
     }
     
-    if (max_date) {
+    if (max_date !== undefined) {
         query += ' AND create_time <= ?';
         queryParams.push(max_date);  // Ensure this is in the correct format, e.g., 'YYYY-MM-DD'
     }
@@ -428,11 +428,11 @@ app.get('/api/drinks', authenticateToken(false), async (req, res) => {
     }
 });
 
-app.delete('/api/drinks', authenticateToken(true), async (req, res) => {
-    const { id } = req.query;
+app.delete('/api/drinks/:drink_id', authenticateToken(true), async (req, res) => {
+    const { drink_id } = req.params;
     const user_id = req.user_id;
 
-    if (!id) {
+    if (drink_id === undefined) {
         throw HTTPerror(400, 'Missing ID of the drink to delete')
     }
 
@@ -441,7 +441,7 @@ app.delete('/api/drinks', authenticateToken(true), async (req, res) => {
     try {
         await connection.query(
             'CALL deleteDrink(?, ?)',
-            [id, user_id]
+            [drink_id, user_id]
         );
         res.status(204).send();
 
@@ -461,6 +461,228 @@ app.get('/api/ingredients', authenticateToken(false), async (req, res) => {
 
     let query = 'SELECT * FROM Ingredients WHERE delete_time IS NULL AND created_user_id'
     let queryParams = [];
+
+    if (user_id === undefined) {
+        // Unauthenticated case: only return public ingredients
+        query += ' = 1';
+    } else {
+        // Authenticated case
+        if (include_public === 'true') {
+            query += ' IN (1, ?)'
+        } else {
+            query += ' = ?';
+        }
+        queryParams.push(user_id)
+    }
+    
+    if (name !== undefined) {
+        query += ' AND name = ?';
+        queryParams.push(name);
+    }
+    
+    if (min_ABV !== undefined) {
+        query += ' AND ABV >= ?';
+        queryParams.push(min_ABV);
+    }
+    
+    if (max_ABV !== undefined) {
+        query += ' AND ABV <= ?';
+        queryParams.push(max_ABV);
+    }
+    
+    if (min_sugar !== undefined) {
+        query += ' AND sugar_percent >= ?';
+        queryParams.push(min_sugar);
+    }
+    
+    if (max_sugar !== undefined) {
+        query += ' AND sugar_percent <= ?';
+        queryParams.push(max_sugar);
+    }
+    
+    if (min_date !== undefined) {
+        query += ' AND create_time >= ?';
+        queryParams.push(min_date);  // Ensure this is in the correct format, e.g., 'YYYY-MM-DD'
+    }
+    
+    if (max_date !== undefined) {
+        query += ' AND create_time <= ?';
+        queryParams.push(max_date);  // Ensure this is in the correct format, e.g., 'YYYY-MM-DD'
+    }
+    
+    //TODO INGREDIENT IDS
+    // Execute the query
+    const connection = await pool.getConnection();
+    try {
+        const [results] = await connection.query(query, queryParams);
+
+        // Modify the result set to rename 'ingredient_id' to 'id'
+        const modifiedResults = results.map(item => {
+            return formatIngredient(item);
+        });
+
+        // Return the results with 'id' instead of 'ingredient_id'
+        res.status(200).json({ ingredients: modifiedResults });
+
+    } catch (error) {
+        handleAPIerror(res, error);
+    } finally {
+        connection.release();
+    }
+});
+
+
+app.post('/api/ingredients', authenticateToken(true), async (req, res) => {
+    const { description = null, name, ABV, sugarPercent, tags } = req.body;
+    const user_id = req.user_id;
+
+    if (!name || !ABV || !sugarPercent) {
+        throw HTTPerror(400, 'Missing some of the required parameters');
+    }
+
+    const connection = await pool.getConnection();
+
+    try {
+        const [[[{ new_ingredient_id }]]] = await connection.query(
+            'CALL createIngredient(?, ?, ?, ?, ?)',
+            [name, ABV, description, sugarPercent, user_id]
+        );
+        res.status(201).send({ new_ingredient_id });
+
+    } catch (error) {
+        handleAPIerror(res, error);
+    } finally {
+        connection.release();
+    }
+});
+
+app.delete('/api/ingredients/:ingredient_id', authenticateToken(true), async (req, res) => {
+    const { ingredient_id } = req.params;
+    const user_id = req.user_id;
+
+    if (ingredient_id === undefined) {
+        throw HTTPerror(400, 'Missing ID of the ingredient to delete');
+    }
+
+    const connection = await pool.getConnection();
+
+    try {
+        await connection.query(
+            'CALL deleteIngredient(?, ?)',
+            [ingredient_id, user_id]
+        );
+        res.status(204).send();
+
+    } catch (error) {
+        handleAPIerror(res, error);
+    } finally {
+        connection.release();
+    }
+});
+
+app.post('/api/sessions', authenticateToken(true), async (req, res) => {
+    const user_id = req.user_id;
+    const connection = await pool.getConnection();
+    try {
+        const [[[{ new_session_id}]]] = await connection.query('CALL createSession(?)', [user_id]);
+        res.status(201).json({ new_session_id });
+    } catch (error) {
+        handleAPIerror(res, error);
+    } finally {
+        connection.release();
+    }
+});
+
+app.post('/api/sessions/:session_id', authenticateToken(true), async (req, res) => {
+    const { session_id } = req.params;
+    const user_id = req.user_id;
+    const { drink_id, quantity, start_time, end_time } = req.body;
+
+    if (drink_id === undefined || quantity === undefined || start_time === undefined === end_time === undefined) {
+        throw HTTPerror(400, 'Missing parameters');
+    }
+
+    const connection = await pool.getConnection();
+
+    try {
+        // Check that this session belongs to the user
+        const [rows] = await connection.query(
+            'SELECT 1 FROM Sessions WHERE session_id = ? AND created_user_id = ? LIMIT 1',
+            [session_id, user_id]
+        );
+
+        if (rows.length === 0) {
+            throw HTTPerror(400, 'No session of that ID exists under this user');
+        }
+
+        await connection.query(
+            'CALL addDrinkToSession(?, ?, ?, ?, ?)',
+            [session_id, drink_id, quantity, start_time, end_time]
+        );
+        res.status(204).send();
+    } catch (error) {
+        handleAPIerror(res, error);
+    } finally {
+        connection.release();
+    }
+    
+
+});
+
+app.delete('/api/sessions/:session_id', authenticateToken(true), async (req, res) => {
+    const { session_id } = req.params;
+    const user_id = req.user_id;
+
+    if (session_id === undefined) {
+        throw HTTPerror(400, 'Missing ID of the session to delete')
+    }
+
+    const connection = await pool.getConnection();
+
+    try {
+        await connection.query(
+            'CALL deleteSession(?, ?)',
+            [session_id, user_id]
+        );
+        res.status(204).send();
+
+    } catch (error) {
+        handleAPIerror(res, error);
+    } finally {
+        connection.release();
+    }
+});
+
+app.delete('/api/sessions/:session_id/:session_drink_id', authenticateToken(true), async (req, res) => {
+    const { session_id, session_drink_id } = req.params;
+    const user_id = req.user_id;
+
+    if (session_id === undefined || session_drink_id === undefined) {
+        throw HTTPerror(400, 'Missing ID of the session or the drink within the session')
+    }
+
+    const connection = await pool.getConnection();
+
+    try {
+        await connection.query(
+            'CALL removeDrinkFromSession(?, ?)',
+            [session_drink_id, user_id]
+        );
+        res.status(204).send();
+    } catch (error) {
+        handleAPIerror(res, error);
+    } finally {
+        connection.release();
+    }
+});
+
+app.get('/api/sessions', authenticateToken(true), async (req, res) => {
+    const { min_standards, max_standards, min_sugar, max_sugar, min_date, max_date, min_duration, max_duration } = req.query;
+    const user_id = req.user_id;
+    // Build the base SQL query
+
+    let query = 'SELECT * FROM SessionsInfo WHERE created_user_id = ?'
+    let queryParams = [user_id];
 
     if (!user_id) {
         // Unauthenticated case: only return public ingredients
@@ -523,55 +745,6 @@ app.get('/api/ingredients', authenticateToken(false), async (req, res) => {
 
         // Return the results with 'id' instead of 'ingredient_id'
         res.status(200).json({ ingredients: modifiedResults });
-
-    } catch (error) {
-        handleAPIerror(res, error);
-    } finally {
-        connection.release();
-    }
-});
-
-
-app.post('/api/ingredients', authenticateToken(true), async (req, res) => {
-    const { description = null, name, ABV, sugarPercent, tags } = req.body;
-    const user_id = req.user_id;
-
-    if (!name || !ABV || !sugarPercent) {
-        throw HTTPerror(400, 'Missing some of the required parameters');
-    }
-
-    const connection = await pool.getConnection();
-
-    try {
-        const [[[{ new_ingredient_id }]]] = await connection.query(
-            'CALL createIngredient(?, ?, ?, ?, ?)',
-            [name, ABV, description, sugarPercent, user_id]
-        );
-        res.status(201).send({ new_ingredient_id });
-
-    } catch (error) {
-        handleAPIerror(res, error);
-    } finally {
-        connection.release();
-    }
-});
-
-app.delete('/api/ingredients', authenticateToken(true), async (req, res) => {
-    const { id } = req.query;
-    const user_id = req.user_id;
-
-    if (!id) {
-        throw HTTPerror(400, 'Missing ID of the ingredient to delete');
-    }
-
-    const connection = await pool.getConnection();
-
-    try {
-        await connection.query(
-            'CALL deleteIngredient(?, ?)',
-            [id, user_id]
-        );
-        res.status(204).send();
 
     } catch (error) {
         handleAPIerror(res, error);
