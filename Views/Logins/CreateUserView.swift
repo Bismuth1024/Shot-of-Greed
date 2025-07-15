@@ -18,6 +18,8 @@ struct CreateUserView: View {
     @State var alertMessage = ""
     @State var alertTitle = "Error"
     
+    @State var isConnected : Bool? = nil
+    
     var body: some View {
         Form {
             Section {
@@ -47,6 +49,21 @@ struct CreateUserView: View {
             Section {
                 Button("Create User") {
                     validate()
+                }
+            }
+            
+            Section {
+                VStack(spacing: 20) {
+                    Button("Check Internet") {
+                        checkInternetConnection { success in
+                            isConnected = success
+                        }
+                    }
+
+                    if let result = isConnected {
+                        Text(result ? "Internet: ✅ Yes" : "Internet: ❌ No")
+                            .foregroundColor(result ? .green : .red)
+                    }
                 }
             }
         }
@@ -86,10 +103,24 @@ struct CreateUserView: View {
                 presentingAlert = true
             }
         }
-         
-         
-        
-        
+    }
+    
+    func checkInternetConnection(completion: @escaping (Bool) -> Void) {
+        guard let url = URL(string: "https://www.apple.com/library/test/success.html") else {
+            completion(false)
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 5 // seconds
+
+        URLSession.shared.dataTask(with: request) { _, response, error in
+            if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
+                completion(true)
+            } else {
+                completion(false)
+            }
+        }.resume()
     }
 }
 

@@ -26,4 +26,6 @@ class AppSession : ObservableObject {
     func tryLoad() {
         
     }
+    
+    
 }

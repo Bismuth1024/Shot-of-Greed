@@ -7,6 +7,13 @@
 
 import Foundation
 
+struct GenericError: Error, LocalizedError, Decodable {
+    let message: String
+    var errorDescription: String? {
+        return message
+    }
+}
+
 struct APIResponse<T: Decodable>: Decodable {
     let result: Result<T, GenericError>
     
@@ -15,15 +22,12 @@ struct APIResponse<T: Decodable>: Decodable {
     }
     
     init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        
-        if let message = try? container.decode(String.self, forKey: .error_message) {
-            // If "message" exists, it's an error
-            result = .failure(GenericError(message: message))
+        // Try decoding error response first
+        if let error = try? GenericError(from: decoder) {
+            self.result = .failure(error)
         } else {
-            // Try decoding the success value
             let value = try T(from: decoder)
-            result = .success(value)
+            self.result = .success(value)
         }
     }
 }
@@ -32,8 +36,12 @@ struct APIError : Error, Decodable {
     let message : String
 }
 
-struct NewIDResponse : Decodable {
+struct NewUserIDResponse : Decodable {
     let new_user_id : Int
+}
+
+struct NewIngredientIDResponse : Decodable {
+    let new_ingredient_id : Int
 }
 
 struct LoginResponse : Decodable {

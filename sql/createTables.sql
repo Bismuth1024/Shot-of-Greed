@@ -171,10 +171,7 @@ SELECT
     u.username AS username,
     s.start_time AS start_time,
     s.end_time AS end_time,
-    CONCAT(
-        TIMESTAMPDIFF(HOUR, s.start_time, COALESCE(s.end_time, NOW())), ' hours, ',
-        MOD(TIMESTAMPDIFF(MINUTE, s.start_time, COALESCE(s.end_time, NOW())), 60), ' minutes'
-    ) AS duration,
+    TIMESTAMPDIFF(SECONDS, s.start_time, COALESCE(s.end_time, NOW()) AS duration,
     COALESCE(SUM(sd.quantity), 0) AS n_drinks,
     COALESCE(ROUND(SUM(do.n_standards * sd.quantity), 3), 0) AS total_standards,
     COALESCE(ROUND(SUM(do.sugar_g * sd.quantity), 2), 0) AS total_sugar

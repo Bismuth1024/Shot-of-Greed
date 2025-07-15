@@ -205,27 +205,30 @@ DELIMITER //
 
 CREATE PROCEDURE addTagToIngredient(
 	IN p_ingredient_id INT,
-	IN p_tag_name VARCHAR(50)
+	IN p_tag_id INT
 )
 MODIFIES SQL DATA
 
 BEGIN
-	DECLARE p_tag_id INT;
-
-	SELECT tag_id
-	INTO p_tag_id 
-	FROM Tags
-	WHERE name = p_tag_name AND type = 'Ingredient'
-	LIMIT 1;
-
-	IF p_tag_id IS NULL THEN
-		SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = 'Error: Tag not found';
-	END IF;
-
 	INSERT INTO IngredientTags (ingredient_id, tag_id)
         VALUES (p_ingredient_id, p_tag_id);
+END //
 
+DELIMITER ;
+
+#-------------------------------------------------------------------------------------------------------
+
+DELIMITER //
+
+CREATE PROCEDURE addTagToDrink(
+	IN p_drink_id INT,
+	IN p_tag_id INT
+)
+MODIFIES SQL DATA
+
+BEGIN
+	INSERT INTO DrinkTags (drink_id, tag_id)
+        VALUES (p_drink_id, p_tag_id);
 END //
 
 DELIMITER ;
@@ -269,6 +272,14 @@ CREATE PROCEDURE addDrinkToSession(
 MODIFIES SQL DATA
 
 BEGIN
+	IF p_start_time IS NULL THEN
+		SET p_start_time = CURRENT_TIMESTAMP;
+	END IF;
+
+	IF p_end_time IS NULL THEN
+		SET p_end_time = p_start_time;
+	END IF;
+
 	INSERT INTO SessionDrinks (session_id, drink_id, quantity, start_time, end_time)
 	VALUES (p_session_id, p_drink_id, p_quantity, p_start_time, p_end_time);
 
