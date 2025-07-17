@@ -44,6 +44,10 @@ struct NewIngredientIDResponse : Decodable {
     let new_ingredient_id : Int
 }
 
+struct NewDrinkIDResponse : Decodable {
+    let new_drink_id : Int
+}
+
 struct LoginResponse : Decodable {
     let user_id : Int
     let login_token : String
@@ -54,7 +58,16 @@ struct TagsResponse : Decodable {
     let tags : [Tag]
 }
 
+struct NewSessionIDResponse : Decodable {
+    let new_session_id: Int
+}
+
+struct NewSessionDrinkIDResponse : Decodable {
+    let new_pairing_id: Int
+}
+
 struct IngredientsResponse: Decodable {
     var ingredients: [DrinkIngredient]
-
 }
+
+struct EmptyResponse : Decodable {}

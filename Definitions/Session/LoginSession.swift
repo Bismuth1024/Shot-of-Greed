@@ -19,9 +19,9 @@ import Foundation
  
  */
 
-class AppSession : ObservableObject {
-    @Published var currentUser: Int? = nil
-    @Published var sessionToken: String? = nil
+struct LoginSession {
+    var currentUser: Int
+    var sessionToken: String
     
     func tryLoad() {
         

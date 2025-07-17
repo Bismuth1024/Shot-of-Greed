@@ -211,7 +211,8 @@ If a valid token is provided, the API will also return the private drinks for th
 
 - 200: successfully fetched drinks
     - array of JSON objects with
-        - drink_id
+        - id
+        - description
         - name
         - created_user_id
         - create_time
@@ -222,7 +223,6 @@ If a valid token is provided, the API will also return the private drinks for th
 #### Notes
 
 - Maybe add support for searching for partial matches to a name soon.
-- Tags are still a work in progress
 
 ### GET /drinks/:drink_id
 
@@ -244,6 +244,7 @@ none
         - id
         - create_time
         - created_user_id
+        - description
         - name
         - tags
         - ingredients: array of:
@@ -321,7 +322,7 @@ none
 - Session is created to start at the current time.
 - Maybe add support in future for sesssions starting at an arbitrary time - such as if a user completed a session offline and wants to upload it in future.
 
-### POST /sessions/:session_id
+### POST /sessions/:session_id/sessiondrinks
 
 #### Description
 
@@ -370,7 +371,7 @@ none
 
 - Currently returns a 500 for no session of that ID under the user, as this is a sql error - should it be 400?
 
-### DELETE /sessions/:session_id/:session_drink_id
+### DELETE /sessions/:session_id/sessiondrinks/:session_drink_id
 
 #### Description
 

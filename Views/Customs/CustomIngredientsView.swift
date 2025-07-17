@@ -9,7 +9,6 @@ import SwiftUI
 import Sliders
 
 struct CustomIngredientsView: View {
-    @EnvironmentObject var CurrentAppSession : AppSession
     @State var dummyIngredient = DrinkIngredient(id: 0, name: "", ABV: 0.0, sugarPercent: 0.0, tags: [])
     @State var searchText: String = ""
     @State var Ingredients : [DrinkIngredient] = []
@@ -107,6 +106,7 @@ struct CustomIngredientsView: View {
     }
     
     func refreshResults() {
+        /*
         API.getIngredients(authSession: CurrentAppSession, userID: CurrentAppSession.currentUser!, minABV: minABV, maxABV: maxABV, minSugar: minSugar, maxSugar: maxSugar, minDate: minDate, maxDate: maxDate) {response in
             switch response {
             case .failure(let error):
@@ -116,6 +116,7 @@ struct CustomIngredientsView: View {
                 print(Ingredients)
             }
         }
+         */
     }
 }
 

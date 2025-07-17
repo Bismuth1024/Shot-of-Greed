@@ -17,21 +17,19 @@ struct CurrentViewWrapper {
 }
 
 struct WrapperView: View {
-    @StateObject var CurrentAppSession = AppSession()
-    
+    @EnvironmentObject var Manager : SessionManager
     var body: some View {
         NavigationView {
-            if (CurrentAppSession.sessionToken != nil) {
+            if (Manager.isLoggedIn) {
                 HomeTabsView()
             } else {
                 ParentLoginView()
             }
         }
         .onAppear {
-            CurrentAppSession.tryLoad()
+            //CurrentAppSession.tryLoad()
             
         }
-        .environmentObject(CurrentAppSession)
     }
 }
 

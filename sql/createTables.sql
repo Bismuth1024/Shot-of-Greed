@@ -148,6 +148,7 @@ SELECT
     d.created_user_id AS created_user_id,
     u.username AS created_user_name,
     d.create_time AS create_time,
+    d.description AS description,
     COUNT(i.ingredient_id) AS n_ingredients,
     ROUND(SUM(di.volume * i.ABV * 0.785 / 1000), 3) AS n_standards,
     ROUND(SUM(di.volume * i.sugar_percent / 100), 2) AS sugar_g,
@@ -163,7 +164,6 @@ LEFT JOIN
 GROUP BY 
     d.drink_id;
 
-
 CREATE VIEW SessionsInfo AS
 SELECT
     s.session_id AS session_id,
@@ -171,7 +171,7 @@ SELECT
     u.username AS username,
     s.start_time AS start_time,
     s.end_time AS end_time,
-    TIMESTAMPDIFF(SECONDS, s.start_time, COALESCE(s.end_time, NOW()) AS duration,
+    TIMESTAMPDIFF(SECOND, s.start_time, COALESCE(s.end_time, CURRENT_TIMESTAMP)) AS duration,
     COALESCE(SUM(sd.quantity), 0) AS n_drinks,
     COALESCE(ROUND(SUM(do.n_standards * sd.quantity), 3), 0) AS total_standards,
     COALESCE(ROUND(SUM(do.sugar_g * sd.quantity), 2), 0) AS total_sugar

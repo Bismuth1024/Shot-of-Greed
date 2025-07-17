@@ -49,6 +49,7 @@ struct TagEditor<T: Taggable>: View {
         }
         .onAppear() {
             print("APPEAR")
+            /*
             API.getTags(type: type) { result in
                 switch result {
                 case .success(let response):
@@ -56,7 +57,7 @@ struct TagEditor<T: Taggable>: View {
                 case .failure(let error):
                     print(error)
                 }
-            }
+            }\*/
         }
         
         if isSearchable {

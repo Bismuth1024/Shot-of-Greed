@@ -66,6 +66,10 @@ struct AlcoholicDrink : Identifiable, Equatable, Codable, Hashable, Taggable {
         return true
     }
     
+    func numIngredients() -> Int {
+        return ingredients.count
+    }
+    
     func numStandards() -> Double {
         var toReturn = 0.0
         for ingredient in ingredients {
@@ -159,46 +163,45 @@ struct AlcoholicDrink : Identifiable, Equatable, Codable, Hashable, Taggable {
     }
     
     static var Sample = AlcoholicDrink(id: 1, name: "Sample Drink", ingredients: [(DrinkIngredient.Sample, 100)])
-    
-    /*
-    static var ImageNames: [String] = [
-        "Coupe",
-        "Highball Glass",
-        "Rocks Glass",
-        "Shot Glass"
-    ]
-     */
-    
-    //This function is for adding a bunch of shit like "Vodka shot" without me having to type it
-    //Also means that any new spirits will automatically be added which is nice but honestly I should just write it all out
-    /*
-    static func addSpiritsToDatabase() {
-        for element in DrinkIngredient.IngredientsDictionary.enumerated() {
-            let entry = element.1
-            let name = entry.0
-            let ingredient = entry.1
-            if ingredient.hasTag(.Spirit) || ingredient.hasTag(.Liqueur) {
-                var drinkName = name + " (shot)"
-                DrinkDictionary[drinkName] = AlcoholicDrink(name: drinkName, imageName: "Shot Glass", ingredients: [
-                    (ingredient, 30.0)
-                ], tags: [.SingleIngredient, .Shot])
-                drinkName = name + " (shooter)"
-                DrinkDictionary[drinkName] = AlcoholicDrink(name: drinkName, imageName: "Shot Glass", ingredients: [
-                    (ingredient, 60.0)
-                ], tags: [.SingleIngredient, .Shot])
-            }
-        }
-    }
-    
-    static func loadCustomDrinks() {
-        let customDrinks: [AlcoholicDrink] = Settings.loadArray(key: "customDrinks") ?? []
-        
-        for drink in customDrinks {
-            DrinkDictionary[drink.name] = drink
-        }
-    }
-     */
 }
 
+struct AlcoholicDrinkOverview : Codable, Hashable, Identifiable {
+    var id: Int
+    var name: String
+    var created_user_id: Int
+    var create_time: Date
+    var n_ingredients: Int
+    var n_standards: Double
+    var sugar_g: Double
+    
+    init(id: Int, name: String, created_user_id: Int, create_time: Date, n_ingredients: Int, n_standards: Double, sugar_g: Double) {
+        self.id = id
+        self.name = name
+        self.created_user_id = created_user_id
+        self.create_time = create_time
+        self.n_ingredients = n_ingredients
+        self.n_standards = n_standards
+        self.sugar_g = sugar_g
+    }
+    
+    init(drink: AlcoholicDrink) {
+        self.id = drink.id
+        self.name = drink.name
+        self.created_user_id = drink.created_user_id
+        self.create_time = drink.create_time
+        self.n_ingredients = drink.numIngredients()
+        self.n_standards = drink.numStandards()
+        self.sugar_g = drink.totalSugar()
+    }
+}
 
+/*
+ drink_id
+ - name
+ - created_user_id
+ - create_time
+ - n_ingredients
+ - n_standards
+ - sugar_g
+ */
 

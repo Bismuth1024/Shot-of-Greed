@@ -10,7 +10,7 @@ import SwiftUI
 struct HomeTabsView: View {
     var body: some View {
         TabView {
-            SessionView()
+            SessionWrapperView()
                 .tabItem {
                     Label("Session", systemImage: "wineglass")
                 }

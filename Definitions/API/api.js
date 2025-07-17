@@ -219,7 +219,7 @@ function formatIngredient(raw) {
     };
 }
 
-//GET ingredients
+//Ingredients endpoints
 app.get('/api/ingredients', authenticateToken(false), async (req, res) => {
     const { name, min_ABV, max_ABV, min_sugar, max_sugar, min_date, max_date, include_tag_ids, require_all_tags, exclude_tag_ids, include_public } = req.query;
     const user_id = req.user_id;
@@ -370,69 +370,55 @@ app.get('/api/ingredients', authenticateToken(false), async (req, res) => {
     }
 });
 
-
-
-// Create Drink POST API Endpoint
-app.post('/api/drinks', authenticateToken(true), async (req, res) => {
-    const { drink } = req.body;
+app.post('/api/ingredients', authenticateToken(true), async (req, res) => {
+    const { description = null, name, ABV, sugarPercent, tags } = req.body;
     const user_id = req.user_id;
 
-    const { name, description = null, ingredients, tags } = drink;
-
-    if (name === undefined || !Array.isArray(ingredients) || ingredients.length == 0) {
-        throw HTTPerror(401, 'Missing some of the required parameters')
+    if (!name || !ABV || !sugarPercent) {
+        throw HTTPerror(400, 'Missing some of the required parameters');
     }
 
     const connection = await pool.getConnection();
+
     try {
-        // Start a transaction
-        await connection.beginTransaction();
-
-        // Call stored procedure to create a drink
-        const [[[{ new_drink_id }]]] = await connection.query(
-            'CALL createDrink(?, ?, ?)',
-            [name, description, user_id]
+        const [[[{ new_ingredient_id }]]] = await connection.query(
+            'CALL createIngredient(?, ?, ?, ?, ?)',
+            [name, ABV, description, sugarPercent, user_id]
         );
-
-
-        // Add ingredients to the drink
-        for (const ingredient of ingredients) {
-            const { ingredientType, volume } = ingredient;
-            const { id } = ingredientType;
-
-            if (id === undefined || volume === undefined) {
-                throw HTTPerror(401, 'One of the ingredients is invalid');
-            }
-            await connection.query(
-                'CALL addIngredientToDrink(?, ?, ?)',
-                [id, new_drink_id, volume]
-            );
-        }
-
-        for (const tag of tags) {
-            const { id } = tag;
-            if (id === undefined) {
-                throw HTTPerror(401, 'One of the tags is invalid');
-            }
-            await connection.query(
-                'CALL addTagToDrink(?, ?)',
-                [new_drink_id, id]
-            );
-        }
-
-        // Commit the transaction
-        await connection.commit();
-        res.status(201).send({ new_drink_id });
+        res.status(201).send({ new_ingredient_id });
 
     } catch (error) {
-        // Rollback on error
-        await connection.rollback();
         handleAPIerror(res, error);
     } finally {
         connection.release();
     }
 });
 
+app.delete('/api/ingredients/:ingredient_id', authenticateToken(true), async (req, res) => {
+    const { ingredient_id } = req.params;
+    const user_id = req.user_id;
+
+    if (ingredient_id === undefined) {
+        throw HTTPerror(400, 'Missing ID of the ingredient to delete');
+    }
+
+    const connection = await pool.getConnection();
+
+    try {
+        await connection.query(
+            'CALL deleteIngredient(?, ?)',
+            [ingredient_id, user_id]
+        );
+        res.status(204).send();
+
+    } catch (error) {
+        handleAPIerror(res, error);
+    } finally {
+        connection.release();
+    }
+});
+
+// Drink endpoints
 app.get('/api/drinks', authenticateToken(false), async (req, res) => {
     const {name, min_standards, max_standards, min_sugar, max_sugar, min_ingredients, max_ingredients, min_date, max_date, include_ingredient_ids, require_all_ingredients, exclude_ingredient_ids, include_tag_ids, exclude_tag_ids, require_all_tags, include_public } = req.query;
     const user_id = req.user_id;
@@ -446,7 +432,7 @@ app.get('/api/drinks', authenticateToken(false), async (req, res) => {
 
     let query = `
         SELECT
-            do.drink_id AS drink_id,
+            do.drink_id AS id,
             do.name AS name,
             do.created_user_id AS created_user_id,
             do.created_user_name AS created_user_name,
@@ -594,14 +580,19 @@ app.get('/api/drinks', authenticateToken(false), async (req, res) => {
     const connection = await pool.getConnection();
     try {
         const [rows] = await connection.query(query, queryParams);
-        res.status(200).json(rows); // Return the results as JSON
+        results = rows.map(row => ({
+            ...row,
+            sugar_g: parseFloat(row.sugar_g),
+            create_time: JSDateToSwift(row.create_time),
+            n_standards: parseFloat(row.n_standards)
+        }));
+        res.status(200).json(results); // Return the results as JSON
     } catch (error) {
         handleAPIerror(res, error);
     } finally {
         connection.release();
     }
 });
-
 
 app.get('/api/drinks/:drink_id', authenticateToken(false), async (req, res) => {
     const { drink_id } = req.params;
@@ -753,6 +744,66 @@ app.get('/api/drinks/:drink_id', authenticateToken(false), async (req, res) => {
     }
 });
 
+app.post('/api/drinks', authenticateToken(true), async (req, res) => {
+    const { drink } = req.body;
+    const user_id = req.user_id;
+
+    const { name, description = null, ingredients, tags } = drink;
+
+    if (name === undefined || !Array.isArray(ingredients) || ingredients.length == 0) {
+        throw HTTPerror(401, 'Missing some of the required parameters')
+    }
+
+    const connection = await pool.getConnection();
+    try {
+        // Start a transaction
+        await connection.beginTransaction();
+
+        // Call stored procedure to create a drink
+        const [[[{ new_drink_id }]]] = await connection.query(
+            'CALL createDrink(?, ?, ?)',
+            [name, description, user_id]
+        );
+
+
+        // Add ingredients to the drink
+        for (const ingredient of ingredients) {
+            const { ingredientType, volume } = ingredient;
+            const { id } = ingredientType;
+
+            if (id === undefined || volume === undefined) {
+                throw HTTPerror(401, 'One of the ingredients is invalid');
+            }
+            await connection.query(
+                'CALL addIngredientToDrink(?, ?, ?)',
+                [id, new_drink_id, volume]
+            );
+        }
+
+        for (const tag of tags) {
+            const { id } = tag;
+            if (id === undefined) {
+                throw HTTPerror(401, 'One of the tags is invalid');
+            }
+            await connection.query(
+                'CALL addTagToDrink(?, ?)',
+                [new_drink_id, id]
+            );
+        }
+
+        // Commit the transaction
+        await connection.commit();
+        res.status(201).send({ new_drink_id });
+
+    } catch (error) {
+        // Rollback on error
+        await connection.rollback();
+        handleAPIerror(res, error);
+    } finally {
+        connection.release();
+    }
+});
+
 app.delete('/api/drinks/:drink_id', authenticateToken(false), async (req, res) => {
     const { drink_id } = req.params;
     const user_id = req.user_id;
@@ -775,56 +826,7 @@ app.delete('/api/drinks/:drink_id', authenticateToken(false), async (req, res) =
     }
 });
 
-
-
-
-app.post('/api/ingredients', authenticateToken(true), async (req, res) => {
-    const { description = null, name, ABV, sugarPercent, tags } = req.body;
-    const user_id = req.user_id;
-
-    if (!name || !ABV || !sugarPercent) {
-        throw HTTPerror(400, 'Missing some of the required parameters');
-    }
-
-    const connection = await pool.getConnection();
-
-    try {
-        const [[[{ new_ingredient_id }]]] = await connection.query(
-            'CALL createIngredient(?, ?, ?, ?, ?)',
-            [name, ABV, description, sugarPercent, user_id]
-        );
-        res.status(201).send({ new_ingredient_id });
-
-    } catch (error) {
-        handleAPIerror(res, error);
-    } finally {
-        connection.release();
-    }
-});
-
-app.delete('/api/ingredients/:ingredient_id', authenticateToken(true), async (req, res) => {
-    const { ingredient_id } = req.params;
-    const user_id = req.user_id;
-
-    if (ingredient_id === undefined) {
-        throw HTTPerror(400, 'Missing ID of the ingredient to delete');
-    }
-
-    const connection = await pool.getConnection();
-
-    try {
-        await connection.query(
-            'CALL deleteIngredient(?, ?)',
-            [ingredient_id, user_id]
-        );
-        res.status(204).send();
-
-    } catch (error) {
-        handleAPIerror(res, error);
-    } finally {
-        connection.release();
-    }
-});
+//Sessions endpoints
 
 app.post('/api/sessions', authenticateToken(true), async (req, res) => {
     const user_id = req.user_id;
@@ -839,13 +841,11 @@ app.post('/api/sessions', authenticateToken(true), async (req, res) => {
     }
 });
 
-app.post('/api/sessions/:session_id', authenticateToken(true), async (req, res) => {
+app.post('/api/sessions/:session_id/sessiondrinks', authenticateToken(true), async (req, res) => {
     const { session_id } = req.params;
     const user_id = req.user_id;
     const { drink_id, quantity = 1, start_time = null, end_time = null } = req.body;
 
-    console.log(Date.now());
-    return
     if (drink_id === undefined) {
         throw HTTPerror(400, 'Missing drink ID');
     }
@@ -863,11 +863,11 @@ app.post('/api/sessions/:session_id', authenticateToken(true), async (req, res) 
             throw HTTPerror(400, 'No session of that ID exists under this user');
         }
 
-        await connection.query(
+        const [[[{ new_pairing_id }]]] = await connection.query(
             'CALL addDrinkToSession(?, ?, ?, ?, ?)',
             [session_id, drink_id, quantity, start_time, end_time]
         );
-        res.status(201).send();
+        res.status(201).send({ new_pairing_id });
     } catch (error) {
         handleAPIerror(res, error);
     } finally {
@@ -901,7 +901,7 @@ app.delete('/api/sessions/:session_id', authenticateToken(true), async (req, res
     }
 });
 
-app.delete('/api/sessions/:session_id/:session_drink_id', authenticateToken(true), async (req, res) => {
+app.delete('/api/sessions/:session_id/sessiondrinks/:session_drink_id', authenticateToken(true), async (req, res) => {
     const { session_id, session_drink_id } = req.params;
     const user_id = req.user_id;
 

@@ -60,7 +60,7 @@ struct API {
      
      */
     
-    static func handleRequest<T>(_ endpoint: String, method: String, queryParams: [URLQueryItem] = [], bodyData: Data? = nil, authSession: AppSession? = nil, _ completion: @escaping (Result<T, Error>) -> Void) where T : Decodable {
+    static func handleRequest<T>(_ endpoint: String, method: String, queryParams: [URLQueryItem] = [], bodyData: Data? = nil, authSession: LoginSession? = nil, _ completion: @escaping (Result<T, Error>) -> Void) where T : Decodable {
         let baseURL = APIURL.appendingPathComponent(endpoint)
         var components = URLComponents(url: baseURL, resolvingAgainstBaseURL: false)!
         components.queryItems = queryParams;
@@ -70,7 +70,7 @@ struct API {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = bodyData
         if let authSession = authSession {
-            request.setValue("Bearer \(authSession.sessionToken!)", forHTTPHeaderField: "Authorization")
+            request.setValue("Bearer \(authSession.sessionToken)", forHTTPHeaderField: "Authorization")
         }
         
         let task = URLSession.shared.dataTask(with: request) { data, response, error in
@@ -115,44 +115,79 @@ struct API {
         }
         task.resume()
     }
+    
+    static func createUser(with request: UsersPostRequest, _ completion: @escaping (Result<NewUserIDResponse, Error>) -> Void) {
+        let bodyData = try! JSONEncoder().encode(request)
+        handleRequest("/users", method: "POST", bodyData: bodyData, completion)
+    }
   
     static func createUser(username: String, password: String, email: String?, birthdate: Date, gender: String, _ completion: @escaping (Result<NewUserIDResponse, Error>) -> Void) {
-        let body = UsersPostRequest(username: username, password: password, email: email, birthdate: birthdate, gender: gender)
-        let bodyData = try! JSONEncoder().encode(body)
-        handleRequest("/users", method: "POST", bodyData: bodyData, completion)
+        let request = UsersPostRequest(username: username, password: password, email: email, birthdate: birthdate, gender: gender)
+        createUser(with: request, completion)
     }
     
     //Return/response value is the token for the login session
-    static func loginUser(username: String, password: String, _ completion: @escaping (Result<LoginResponse, Error>) -> Void) {
-        let body = LoginPostRequest(username: username, password: password)
-        let bodyData = try! JSONEncoder().encode(body)
+    static func loginUser(with request: LoginPostRequest, _ completion: @escaping (Result<LoginResponse, Error>) -> Void) {
+        let bodyData = try! JSONEncoder().encode(request)
         handleRequest("/login", method: "POST", bodyData: bodyData, completion)
     }
     
-    static func getIngredients(authSession: AppSession? = nil, name: String? = nil, minABV: Double? = nil, maxABV: Double? = nil, minSugar: Double? = nil, maxSugar: Double? = nil, minDate: Date? = nil, maxDate: Date? = nil, includeTagIDs: [Int]? = nil, requireAllTags: Bool? = nil, excludeTagIDs: [Int]? = nil, includePublic: Bool? = nil, _ completion: @escaping (Result<[DrinkIngredient], Error>) -> Void) {
-        
-        let parameters: [URLQueryItem] = [
-            .optional("name", name),
-            .optional("min_ABV", minABV),
-            .optional("max_ABV", maxABV),
-            .optional("min_sugar", minSugar),
-            .optional("max_sugar", maxSugar),
-            .optional("min_date", minDate),
-            .optional("max_date", maxDate),
-            .optional("include_tag_ids", includeTagIDs),
-            .optional("require_all_tags", requireAllTags),
-            .optional("exclude_tag_ids", excludeTagIDs),
-            .optional("include_public", includePublic)
-        ].compactMap { $0 }
-        
-        handleRequest("/ingredients", method: "GET", queryParams: parameters, completion)
+    static func loginUser(username: String, password: String, _ completion: @escaping (Result<LoginResponse, Error>) -> Void) {
+        let request = LoginPostRequest(username: username, password: password)
+        loginUser(with: request, completion)
     }
     
-    static func createIngredient(authSession: AppSession? = nil, ingredient: DrinkIngredient, completion: @escaping (Result<NewIngredientIDResponse, Error>) -> Void) {
+    static func getIngredients(authSession: LoginSession? = nil, using params: IngredientQueryParams, _ completion: @escaping (Result<[DrinkIngredient], Error>) -> Void) {
+        let queryParams = params.asURLQueryItems()
+        handleRequest("/ingredients", method: "GET", queryParams: queryParams, completion)
+    }
+    
+    static func createIngredient(authSession: LoginSession, ingredient: DrinkIngredient, _ completion: @escaping (Result<NewIngredientIDResponse, Error>) -> Void) {
         let body = IngredientsPostRequest(ingredient)
         let bodyData = try! JSONEncoder().encode(body)
-        handleRequest("/ingredients", method: "POST", bodyData: bodyData, completion)
+        handleRequest("/ingredients", method: "POST", bodyData: bodyData, authSession: authSession, completion)
     }
+    
+    static func deleteIngredient(authSession: LoginSession, ingredientID: Int, _ completion: @escaping (Result<EmptyResponse, Error>) -> Void) {
+        handleRequest("/ingredients/\(ingredientID)", method: "DELETE", authSession: authSession, completion)
+    }
+    
+    static func getDrinks(authSession: LoginSession? = nil, using params: DrinkQueryParams, _ completion: @escaping (Result<[AlcoholicDrinkOverview], Error>) -> Void) {
+        let queryParams = params.asURLQueryItems()
+        handleRequest("/drinks", method: "GET", queryParams: queryParams, completion)
+    }
+    
+    static func getDrink(authSession: LoginSession? = nil, drinkID: Int, _ completion: @escaping (Result<AlcoholicDrink, Error>) -> Void) {
+        handleRequest("/drinks/\(drinkID)", method: "GET", authSession: authSession, completion)
+    }
+    
+    static func createDrink(authSession: LoginSession, drink: AlcoholicDrink, _ completion: @escaping (Result<NewDrinkIDResponse, Error>) -> Void) {
+        let body = DrinksPostRequest(drink)
+        let bodyData = try! JSONEncoder().encode(body)
+        handleRequest("/drinks", method: "POST", bodyData: bodyData, authSession: authSession, completion)
+    }
+    
+    static func deleteDrink(authSession: LoginSession, drinkID: Int, _ completion: @escaping (Result<EmptyResponse, Error>) -> Void) {
+        handleRequest("/drinks/\(drinkID)", method: "DELETE", authSession: authSession, completion)
+    }
+    
+    static func createSession(authSession: LoginSession, _ completion: @escaping (Result<NewSessionIDResponse, Error>) -> Void) {
+        handleRequest("/sessions", method: "POST", authSession: authSession, completion)
+    }
+    
+    static func addDrinkToSession(authSession: LoginSession, sessionID: Int, with request: SessionDrinksPostRequest, _ completion: @escaping (Result<NewSessionDrinkIDResponse, Error>) -> Void) {
+        handleRequest("/sessions/\(sessionID)/sessiondrinks", method: "POST", authSession: authSession, completion)
+    }
+    
+    static func deleteSession(authSession: LoginSession, sessionID: Int, _ completion: @escaping (Result<EmptyResponse, Error>) -> Void) {
+        handleRequest("/sessions/\(sessionID)", method: "DELETE", authSession: authSession, completion)
+    }
+    
+    static func deleteSessionDrink(authSession: LoginSession, sessionID: Int, sessionDrinkID: Int, _ completion: @escaping (Result<EmptyResponse, Error>) -> Void) {
+        handleRequest("/sessions/\(sessionID)/sessiondrinks/\(sessionDrinkID)", method: "DELETE", authSession: authSession, completion)
+    }
+
+    
     
     /*
     static func createIngredient(authSession: AppSession, ingredient: DrinkIngredient, _ completion: @escaping (Result<Int, Error>) -> Void) {

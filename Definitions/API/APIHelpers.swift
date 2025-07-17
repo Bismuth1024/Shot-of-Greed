@@ -46,3 +46,24 @@ extension URLQueryItem {
         return URLQueryItem(name: name, value: value.queryStringValue)
     }
 }
+
+protocol URLQueryConvertible {
+    func asURLQueryItems() -> [URLQueryItem]
+}
+
+/*
+ let parameters: [URLQueryItem] = [
+     .optional("name", name),
+     .optional("min_ABV", minABV),
+     .optional("max_ABV", maxABV),
+     .optional("min_sugar", minSugar),
+     .optional("max_sugar", maxSugar),
+     .optional("min_date", minDate),
+     .optional("max_date", maxDate),
+     .optional("include_tag_ids", includeTagIDs),
+     .optional("require_all_tags", requireAllTags),
+     .optional("exclude_tag_ids", excludeTagIDs),
+     .optional("include_public", includePublic)
+ ].compactMap { $0 }
+ */
+

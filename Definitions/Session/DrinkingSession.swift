@@ -10,27 +10,30 @@ import Foundation
 class DrinkingSession : ObservableObject, Codable {
     @Published var startTime: Date = Date()
     @Published var endTime: Date? = nil
-    @Published var drinks: [DrinkWrapper] = []
+    @Published var drinks: [SessionDrinkWrapper] = []
     
     //just wraps a drink with a start and end time for when it was drunk
-    struct DrinkWrapper : Hashable, Identifiable, Codable, Equatable {
+    struct SessionDrinkWrapper : Hashable, Identifiable, Codable, Equatable {
         var drink: AlcoholicDrink
         var startTime: Date
         var endTime: Date?
+        var quantity: Int
         
         //Because this should be unique
         var id : Date {
             startTime
         }
         
-        init(drink: AlcoholicDrink, startTime: Date, endTime: Date? = nil) {
+        init(drink: AlcoholicDrink, quantity: Int = 1, startTime: Date, endTime: Date? = nil) {
             self.drink = drink
+            self.quantity = quantity
             self.startTime = startTime
             self.endTime = endTime
         }
         
-        init(drink: AlcoholicDrink, shotAt time: Date) {
+        init(drink: AlcoholicDrink, quantity: Int = 1, shotAt time: Date) {
             self.drink = drink
+            self.quantity = quantity
             self.startTime = time
             self.endTime = time
         }
@@ -49,7 +52,7 @@ class DrinkingSession : ObservableObject, Codable {
             return str
         }
         
-        static var sample: DrinkWrapper = DrinkWrapper(drink: AlcoholicDrink.Sample, startTime: Date(), endTime: Date(timeInterval: 100, since: Date()))
+        static var sample: SessionDrinkWrapper = SessionDrinkWrapper(drink: AlcoholicDrink.Sample, startTime: Date(), endTime: Date(timeInterval: 100, since: Date()))
     }
     
     enum CodingKeys: CodingKey {
@@ -68,7 +71,15 @@ class DrinkingSession : ObservableObject, Codable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         startTime = try container.decode(Date.self, forKey: .startTime)
         endTime = try container.decode(Date?.self, forKey: .endTime)
-        drinks = try container.decode([DrinkWrapper].self, forKey: .drinks)
+        drinks = try container.decode([SessionDrinkWrapper].self, forKey: .drinks)
+    }
+    
+    init() {}
+    
+    init(startTime: Date) {
+        self.startTime = startTime
+        self.endTime = nil
+        self.drinks = []
     }
     
     
