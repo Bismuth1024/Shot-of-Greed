@@ -13,13 +13,18 @@ struct DrinkOverviewRowView: View {
         HStack {
             VStack {
                 Text(drink.name)
-                Text("\(drink.n_ingredients)")
+                    .fontWeight(.bold)
             }
+            Spacer()
             VStack {
-                Text("\(drink.n_standards)")
-                Text("\(drink.sugar_g)")
+                Text("\(drink.n_ingredients) ingredient" + ((drink.n_ingredients == 1) ? "" : "s"))
+                Spacer()
+                Text(String(format: "%.2f standard drinks", drink.n_standards))
+                Spacer()
+                Text(String(format: "%.2f g of sugar", drink.sugar_g))
             }
         }
+        .padding(.vertical, 12)
     }
 }
 

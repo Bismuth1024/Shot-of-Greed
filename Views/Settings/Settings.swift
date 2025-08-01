@@ -10,6 +10,10 @@ import Foundation
 struct Settings {
     static let Storage = UserDefaults.standard
     
+    static func getValue<T: Codable>(key: String) -> T {
+        return loadCodable(key: key) ?? Settings.Defaults[key] as! T
+    }
+    
     static func convertToRaw<T: Codable>(_ input: T) -> Data {
         var data: Data
         do {

@@ -107,8 +107,8 @@ struct DrinkQueryParams: URLQueryConvertible {
     var name: String? = nil
     var minStandards: Double? = nil
     var maxStandards: Double? = nil
-    var minIngredients: Double? = nil
-    var maxIngredients: Double? = nil
+    var minIngredients: Int? = nil
+    var maxIngredients: Int? = nil
     var minSugar: Double? = nil
     var maxSugar: Double? = nil
     var minDate: Date? = nil
@@ -143,23 +143,49 @@ struct DrinkQueryParams: URLQueryConvertible {
     }
 }
 
+struct SessionsPostRequest : Encodable {
+    let start_time: String
+    
+    init(start_time: Date) {
+        self.start_time = DateHelpers.JSDateFormatter.string(from: start_time)
+    }
+}
+
 struct SessionDrinksPostRequest: Encodable {
     let drink_id : Int
     let quantity: Int
-    let start_time: Date
-    let end_time: Date
+    let start_time: String
+    let end_time: String?
     
-    init(drink_id: Int, quantity: Int, start_time: Date, end_time: Date) {
+    init(drink_id: Int, quantity: Int, start_time: Date, end_time: Date?) {
         self.drink_id = drink_id
         self.quantity = quantity
-        self.start_time = start_time
-        self.end_time = end_time
+        self.start_time = DateHelpers.JSDateFormatter.string(from: start_time)
+        self.end_time = end_time.map(DateHelpers.JSDateFormatter.string)
     }
     
     init(from wrapper: DrinkingSession.SessionDrinkWrapper) {
         self.drink_id = wrapper.drink.id
         self.quantity = wrapper.quantity
-        self.start_time = wrapper.startTime
-        self.end_time = wrapper.endTime!
+        self.start_time = DateHelpers.JSDateFormatter.string(from: wrapper.startTime)
+        self.end_time = wrapper.endTime.map(DateHelpers.JSDateFormatter.string)
+    }
+}
+
+struct SessionDrinksPatchRequest: Encodable {
+    let end_time: String
+    
+    init(end_time: Date) {
+        self.end_time = DateHelpers.JSDateFormatter.string(from: end_time)
+    }
+}
+
+struct TagsQueryParams: URLQueryConvertible {
+    var type: String? = nil
+    
+    func asURLQueryItems() -> [URLQueryItem] {
+        [
+            .optional("type", type)
+        ].compactMap { $0 }
     }
 }

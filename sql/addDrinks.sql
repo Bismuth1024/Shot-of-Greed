@@ -61,10 +61,10 @@ CALL createIngredientTemp('Water', 0, 0, 'Non-Alcoholic, Sugar Free', 1, NULL, N
 
 
 
-CALL parseDrinkTemp(1, 'Daiquiri', 'Cocktail', 'Rum,60.00,Lime Juice,22.50,Simple Syrup,22.50');
-CALL parseDrinkTemp(1, 'Margarita', 'Cocktail', 'Tequila,60.00,Cointreau,30.00,Lime Juice,30.00');
-CALL parseDrinkTemp(1, 'Negroni', 'Cocktail', 'Gin,30.00,Campari,30.00,Sweet Vermouth,30.00');
-CALL parseDrinkTemp(1, 'Martini', 'Cocktail', 'Gin,60.00,Dry Vermouth,15.00');
+CALL parseDrinkTemp(1, 'Daiquiri', 'Cocktail,Shaken', 'Rum,60.00,Lime Juice,22.50,Simple Syrup,22.50');
+CALL parseDrinkTemp(1, 'Margarita', 'Cocktail,Shaken', 'Tequila,60.00,Cointreau,30.00,Lime Juice,30.00');
+CALL parseDrinkTemp(1, 'Negroni', 'Cocktail,Stirred', 'Gin,30.00,Campari,30.00,Sweet Vermouth,30.00');
+CALL parseDrinkTemp(1, 'Martini', 'Cocktail,Stirred', 'Gin,60.00,Dry Vermouth,15.00');
 CALL parseDrinkTemp(1, 'Jagerbomb', 'Spirit & Mixer', 'Jagermeister,30.00,Red Bull,120.00');
 CALL parseDrinkTemp(1, 'Vodka Lemonade', 'Spirit & Mixer', 'Vodka,30.00,Lemonade,120.00');
 CALL parseDrinkTemp(1, 'Rum and Coke', 'Spirit & Mixer', 'Rum,30.00,Coke,120.00');
@@ -72,14 +72,14 @@ CALL parseDrinkTemp(1, 'Whiskey and Coke', 'Spirit & Mixer', 'Whiskey,30.00,Coke
 CALL parseDrinkTemp(1, 'Gin and Tonic', 'Spirit & Mixer', 'Gin,30.00,Tonic Water,120.00');
 CALL parseDrinkTemp(1, 'Alize Lemonade', 'Spirit & Mixer', 'Alize,30.00,Lemonade,120.00');
 CALL parseDrinkTemp(1, 'Mojito', 'Cocktail', 'Rum,60.00,Lime Juice,22.50,Simple Syrup,22.50,Soda Water,90.00');
-CALL parseDrinkTemp(1, 'Sidecar', 'Cocktail', 'Cognac,30.00,Cointreau,30.00,Lemon Juice,30.00');
+CALL parseDrinkTemp(1, 'Sidecar', 'Cocktail,Shaken', 'Cognac,30.00,Cointreau,30.00,Lemon Juice,30.00');
 CALL parseDrinkTemp(1, 'Soju bottle', 'Single Ingredient', 'Soju,360.00');
-CALL parseDrinkTemp(1, 'Red wine (small glass);', 'Single Ingredient', 'Red Wine,150.00');
-CALL parseDrinkTemp(1, 'Red wine (medium glass);', 'Single Ingredient', 'Red Wine,200.00');
-CALL parseDrinkTemp(1, 'Red wine (large glass);', 'Single Ingredient', 'Red Wine,250.00');
-CALL parseDrinkTemp(1, 'White wine (small glass);', 'Single Ingredient', 'White Wine,150.00');
-CALL parseDrinkTemp(1, 'White wine (medium glass);', 'Single Ingredient', 'White Wine,200.00');
-CALL parseDrinkTemp(1, 'White wine (large glass);', 'Single Ingredient', 'White Wine,250.00');
+CALL parseDrinkTemp(1, 'Red wine (small glass)', 'Single Ingredient', 'Red Wine,150.00');
+CALL parseDrinkTemp(1, 'Red wine (medium glass)', 'Single Ingredient', 'Red Wine,200.00');
+CALL parseDrinkTemp(1, 'Red wine (large glass)', 'Single Ingredient', 'Red Wine,250.00');
+CALL parseDrinkTemp(1, 'White wine (small glass)', 'Single Ingredient', 'White Wine,150.00');
+CALL parseDrinkTemp(1, 'White wine (medium glass)', 'Single Ingredient', 'White Wine,200.00');
+CALL parseDrinkTemp(1, 'White wine (large glass)', 'Single Ingredient', 'White Wine,250.00');
 CALL parseDrinkTemp(1, 'Vodka shot', 'Single Ingredient,Shot', 'Vodka,30.00');
 CALL parseDrinkTemp(1, 'Gin shot', 'Single Ingredient,Shot', 'Gin,30.00');
 CALL parseDrinkTemp(1, 'Rum shot', 'Single Ingredient,Shot', 'Rum,30.00');
@@ -116,4 +116,5 @@ CALL parseDrinkTemp(1, 'Absinthe shooter', 'Single Ingredient,Shot', 'Absinthe,6
 CALL parseDrinkTemp(1, 'Alize shooter', 'Single Ingredient,Shot', 'Alize,60.00');
 CALL parseDrinkTemp(1, 'Soju shooter', 'Single Ingredient,Shot', 'Soju,60.00');
 CALL parseDrinkTemp(1, 'Sake shooter', 'Single Ingredient,Shot', 'Sake,60.00');
+CALL parseDrinkTemp(1, 'Long Island iced tea', 'Cocktail,Shaken', 'Rum,30.00,Vodka,30.00,Gin,30.00,Tequila,30.00,Cointreau,30.00,Lemon Juice,30.00,Simple Syrup,22.50,Coke,60.0')
 

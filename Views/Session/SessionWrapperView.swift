@@ -13,9 +13,18 @@ struct SessionWrapperView: View {
         ZStack {
             if Manager.hasActiveSession {
                 SessionView()
+                    .environmentObject(Manager.CurrentDrinkingSession!)
             } else {
                 Button("New Session") {
                     Manager.startNewSession()
+                    API.createSession(authSession: Manager.CurrentLoginSession!) { result in
+                        switch (result) {
+                        case .failure(let error):
+                            fatalError(String(describing: error))
+                        case .success(let data):
+                            Manager.CurrentDrinkingSession!.id = data.new_session_id
+                        }
+                    }
                 }
             }
         }

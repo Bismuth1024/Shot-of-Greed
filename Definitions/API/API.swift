@@ -23,7 +23,7 @@ struct API {
     
     
     
-    static let APIURL = URL(string: "https://yesh123.duckdns.org:3000/api")!
+    static let APIURL = URL(string: "https://yesh123.ddnsfree.com:3000/api")!
     
     //FIX THIS TO MAKE IT SECURE SOON NO RAW PASSWORDS!!
     /*
@@ -65,6 +65,7 @@ struct API {
         var components = URLComponents(url: baseURL, resolvingAgainstBaseURL: false)!
         components.queryItems = queryParams;
         let requestURL = components.url!
+        print(requestURL)
         var request = URLRequest(url: requestURL)
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -78,8 +79,8 @@ struct API {
                 print("Request error: \(error)")
                 return completion(.failure(error))
             }
-            
-            if let data = data {
+                        
+            if let data = data, !data.isEmpty {
                 do {
                     // Attempt to convert the raw Data into a human-readable JSON format
                     let jsonObject = try JSONSerialization.jsonObject(with: data, options: .mutableContainers)
@@ -139,7 +140,7 @@ struct API {
     
     static func getIngredients(authSession: LoginSession? = nil, using params: IngredientQueryParams, _ completion: @escaping (Result<[DrinkIngredient], Error>) -> Void) {
         let queryParams = params.asURLQueryItems()
-        handleRequest("/ingredients", method: "GET", queryParams: queryParams, completion)
+        handleRequest("/ingredients", method: "GET", queryParams: queryParams, authSession: authSession, completion)
     }
     
     static func createIngredient(authSession: LoginSession, ingredient: DrinkIngredient, _ completion: @escaping (Result<NewIngredientIDResponse, Error>) -> Void) {
@@ -154,7 +155,7 @@ struct API {
     
     static func getDrinks(authSession: LoginSession? = nil, using params: DrinkQueryParams, _ completion: @escaping (Result<[AlcoholicDrinkOverview], Error>) -> Void) {
         let queryParams = params.asURLQueryItems()
-        handleRequest("/drinks", method: "GET", queryParams: queryParams, completion)
+        handleRequest("/drinks", method: "GET", queryParams: queryParams, authSession: authSession, completion)
     }
     
     static func getDrink(authSession: LoginSession? = nil, drinkID: Int, _ completion: @escaping (Result<AlcoholicDrink, Error>) -> Void) {
@@ -171,12 +172,22 @@ struct API {
         handleRequest("/drinks/\(drinkID)", method: "DELETE", authSession: authSession, completion)
     }
     
+    static func createSession(authSession: LoginSession, with request: SessionsPostRequest, _ completion: @escaping (Result<NewSessionIDResponse, Error>) -> Void) {
+        let bodyData = try! JSONEncoder().encode(request)
+        handleRequest("/sessions", method: "POST", bodyData: bodyData, authSession: authSession, completion)
+    }
     static func createSession(authSession: LoginSession, _ completion: @escaping (Result<NewSessionIDResponse, Error>) -> Void) {
-        handleRequest("/sessions", method: "POST", authSession: authSession, completion)
+        createSession(authSession: authSession, with: SessionsPostRequest(start_time: Date.now), completion)
     }
     
     static func addDrinkToSession(authSession: LoginSession, sessionID: Int, with request: SessionDrinksPostRequest, _ completion: @escaping (Result<NewSessionDrinkIDResponse, Error>) -> Void) {
-        handleRequest("/sessions/\(sessionID)/sessiondrinks", method: "POST", authSession: authSession, completion)
+        let bodyData = try! JSONEncoder().encode(request)
+        handleRequest("/sessions/\(sessionID)/sessiondrinks", method: "POST", bodyData: bodyData, authSession: authSession, completion)
+    }
+    
+    static func finishSessionDrink(authSession: LoginSession, sessionID: Int, sessionDrinkID: Int, with request: SessionDrinksPatchRequest, _ completion: @escaping (Result<EmptyResponse, Error>) -> Void) {
+        let bodyData = try! JSONEncoder().encode(request)
+        handleRequest("/sessions/\(sessionID)/sessiondrinks/\(sessionDrinkID)", method: "PATCH", bodyData: bodyData, authSession: authSession, completion)
     }
     
     static func deleteSession(authSession: LoginSession, sessionID: Int, _ completion: @escaping (Result<EmptyResponse, Error>) -> Void) {
@@ -185,6 +196,11 @@ struct API {
     
     static func deleteSessionDrink(authSession: LoginSession, sessionID: Int, sessionDrinkID: Int, _ completion: @escaping (Result<EmptyResponse, Error>) -> Void) {
         handleRequest("/sessions/\(sessionID)/sessiondrinks/\(sessionDrinkID)", method: "DELETE", authSession: authSession, completion)
+    }
+    
+    static func getTags(authSession: LoginSession? = nil, using params: TagsQueryParams, _ completion: @escaping (Result<[Tag], Error>) -> Void) {
+        let queryParams = params.asURLQueryItems()
+        handleRequest("/tags", method: "GET", queryParams: queryParams, completion)
     }
 
     

@@ -26,13 +26,10 @@ struct WrapperView: View {
                 ParentLoginView()
             }
         }
-        .onAppear {
-            //CurrentAppSession.tryLoad()
-            
-        }
     }
 }
 
 #Preview {
     WrapperView()
+        .environmentObject(SessionManager())
 }

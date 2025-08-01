@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct HomeTabsView: View {
+    @EnvironmentObject var Manager: SessionManager
     var body: some View {
         TabView {
             SessionWrapperView()
@@ -25,7 +26,8 @@ struct HomeTabsView: View {
                 }
         }
         .onAppear {
-            
+            //CurrentAppSession.tryLoad()
+            Manager.CurrentTagsManager.loadTags()
         }
     }
 }

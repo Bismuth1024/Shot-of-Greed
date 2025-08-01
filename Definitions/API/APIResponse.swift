@@ -8,9 +8,9 @@
 import Foundation
 
 struct GenericError: Error, LocalizedError, Decodable {
-    let message: String
+    let error_message: String
     var errorDescription: String? {
-        return message
+        return error_message
     }
 }
 
@@ -25,10 +25,17 @@ struct APIResponse<T: Decodable>: Decodable {
         // Try decoding error response first
         if let error = try? GenericError(from: decoder) {
             self.result = .failure(error)
-        } else {
-            let value = try T(from: decoder)
-            self.result = .success(value)
+            return
         }
+        
+        // If T is EmptyResponse, succeed even if the body is empty
+        if T.self == EmptyResponse.self {
+            self.result = .success(EmptyResponse() as! T)
+            return
+        }
+        
+        let value = try T(from: decoder)
+        self.result = .success(value)
     }
 }
 

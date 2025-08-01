@@ -20,6 +20,19 @@ func relativeHeight(_ proportion: Double) -> CGFloat? {
     return proportion * screenBounds.height
 }
 
+extension View {
+    func titleOverlay(_ title: String) -> some View {
+        ZStack(alignment: .top) {
+            self
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            Text(title)
+                .font(.title)
+                .bold()
+                .padding(.top, 40)
+        }
+    }
+}
+
 /*
  func parentHeight() -> CGFloat {
  GeometryReader {metrics in

@@ -10,9 +10,7 @@ import SwiftUI
 struct TagEditor<T: Taggable>: View {
     @Binding var object: T
     var type: String? = nil
-    var isSearchable = false
     @State var LoadedTags = [Tag]()
-    @State var tagSearchText = ""
     
     var searchResults: [Tag] {
         var tags = LoadedTags.filter({!object.hasTag($0)})
@@ -21,11 +19,7 @@ struct TagEditor<T: Taggable>: View {
             tags = tags.filter( {$0.type == type} )
         }
         
-        if !tagSearchText.isEmpty {
-            return tags.filter({$0.name.contains(tagSearchText)})
-        } else {
-            return tags
-        }
+        return tags
     }
     
     var body: some View {
@@ -48,7 +42,6 @@ struct TagEditor<T: Taggable>: View {
             }
         }
         .onAppear() {
-            print("APPEAR")
             /*
             API.getTags(type: type) { result in
                 switch result {
@@ -60,10 +53,6 @@ struct TagEditor<T: Taggable>: View {
             }\*/
         }
         
-        if isSearchable {
-            IconTextField("magnifyingglass", text: $tagSearchText, prompt: "Search")
-        }
-
         List {
             ForEach(searchResults, id: \.self) {tag in
                 HStack {

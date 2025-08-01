@@ -8,65 +8,39 @@
 import SwiftUI
 
 struct AddDrinkView: View {
-    @Binding var isShowing: Bool //Because this window is a popup
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var Manager: SessionManager
     @State var isSelectingDrink: Bool = false //For the new popup to open SelectDrinkView
     @State var isSavingDrink: Bool = false //For saving the drink as a preset
-    @State var drink: AlcoholicDrink = AlcoholicDrink.Sample
+    @State var Drink: AlcoholicDrink = AlcoholicDrink.Sample
     @State var quantity: Int = 1
     @State var drinkingMethod: AlcoholicDrink.DrinkingMethod = .chug
     @State var time: Date = Date()
     
     var body: some View {
-        Form {
-            Section(
-                content: {
+        NavigationStack {
+            Form {
+                Section("Drink") {
                     HStack {
-                        Text("drink.name")
-                        Spacer()
-                        Button("Change") {
-                            isSelectingDrink.toggle()
-                        }
-                        .fullScreenCover(isPresented: $isSelectingDrink) {
-                            NavigationStack {
-                                SelectDrinkView(drink: $drink)
-                            }
+                        NavigationLink(destination: SelectDrinkView(drink: $Drink)) {
+                            Text(Drink.name)
                         }
                     }
-                },
-                header: {
-                    Text("Drink")
                 }
-            )
-            
-            //DrinkIngredientsList(drink: $drink)
-            
-            Section(
-                content: {
+                
+                Section("Ingredients") {
+                    DisclosureGroup("Show/Hide") {
+                        DrinkIngredientsList(Drink: $Drink)
+                    }
+                }
+                
+                Section("Quantity") {
                     Stepper(value: $quantity, in: 1...10) {
                         Text("Quantity: \(quantity)")
                     }
-                    
-                    
-                    HStack {
-                        Spacer()
-                        Button("Save as a preset") {
-                            isSavingDrink.toggle()
-                        }
-                        //.disabled(!drink.isValid())
-                    }
-                    .sheet(isPresented: $isSavingDrink) {
-                        NavigationStack {
-                            HistoryView()
-                        }
-                    }
-                },
-                header: {
-                    Text("Quantity")
                 }
-            )
-            
-            Section(
-                content: {
+                
+                Section("Add as a") {
                     Picker("Drinking speed", selection: $drinkingMethod) {
                         Text("Shot/chug").tag(AlcoholicDrink.DrinkingMethod.chug)
                         Text("Slow (start now)").tag(AlcoholicDrink.DrinkingMethod.slow)
@@ -83,28 +57,47 @@ struct AddDrinkView: View {
                     HStack {
                         Spacer()
                         Button("Add") {
-                            //addDrink()
+                            addDrink()
+                            dismiss()
                         }
-                        //.disabled(!drink.isValid())
                     }
-                },
-                header: {
-                    Text("Add as a:")
-                }
-            )
-        }
-        .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                Button(role: .destructive, action: {
-                    isShowing = false
-                }) {
-                    Text("Cancel")
                 }
             }
         }
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Cancel", role: .cancel) {
+                    dismiss()
+                }
+            }
+        }
+        .navigationTitle("Add Drink")
+        .navigationBarTitleDisplayMode(.inline)
     }
+    
+    func addDrink() {
+        var WrappedDrink = DrinkingSession.SessionDrinkWrapper(drink: Drink, quantity: quantity, startTime: time, endTime: drinkingMethod == .chug ? time : nil)
+        let request = SessionDrinksPostRequest(from: WrappedDrink)
+        API.addDrinkToSession(authSession: Manager.CurrentLoginSession!, sessionID: Manager.CurrentDrinkingSession!.id, with: request) { result in
+            switch result {
+            case .failure(let error):
+                fatalError(String(describing: error))
+            case .success(let response):
+                DispatchQueue.main.async {
+                    WrappedDrink.id = response.new_pairing_id
+                    Manager.CurrentDrinkingSession!.addDrink(WrappedDrink)
+                    for wrapper in Manager.CurrentDrinkingSession!.drinks {
+                        print(wrapper.description())
+                    }
+                }
+            }
+            
+        }
+    }
+    
+    func d() {}
 }
 
 #Preview {
-    AddDrinkView(isShowing: .constant(true))
+    AddDrinkView()
 }

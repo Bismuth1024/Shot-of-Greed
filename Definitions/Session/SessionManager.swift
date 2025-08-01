@@ -8,12 +8,9 @@
 import Foundation
 
 class SessionManager : ObservableObject {
-    @Published var CurrentDrinkingSession : DrinkingSession? = nil {
-        didSet {
-                    print("CurrentDrinkingSession changed: \(String(describing: CurrentDrinkingSession))")
-                }
-        }
+    @Published var CurrentDrinkingSession : DrinkingSession? = nil
     @Published var CurrentLoginSession : LoginSession? = nil
+    @Published var CurrentTagsManager: TagsManager = TagsManager()
     
     func startNewSession() {
         CurrentDrinkingSession = DrinkingSession()

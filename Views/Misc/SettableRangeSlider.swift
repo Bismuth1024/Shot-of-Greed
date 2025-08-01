@@ -9,48 +9,67 @@ import SwiftUI
 import Sliders
 
 struct SettableRangeSlider: View {
-    var minMax : ClosedRange<Double> = 0...100.0
+    var title: String
     @Binding var rangeValue: ClosedRange<Double>
-    @State var lowerValue: Double = 0
-    @State var upperValue: Double = 100
-    
-    init(minMax: ClosedRange<Double>, rangeValue: Binding<ClosedRange<Double>>) {
-        self.minMax = minMax
+    var minMax: ClosedRange<Double> = 0...100
+    var step: Double.Stride
+    var nDecimal: Int
+
+    @State private var lowerValue: Double
+    @State private var upperValue: Double
+
+    enum FocusField { case lower, upper }
+    @FocusState private var focusedField: FocusField?
+
+    init(_ title: String, rangeValue: Binding<ClosedRange<Double>>, minMax: ClosedRange<Double>, step: Double.Stride = 0.001, nDecimal: Int = 2) {
+        self.title = title
         self._rangeValue = rangeValue
-        self.lowerValue = minMax.upperBound
-        self.upperValue = minMax.lowerBound
+        self.minMax = minMax
+        _lowerValue = State(initialValue: rangeValue.wrappedValue.lowerBound)
+        _upperValue = State(initialValue: rangeValue.wrappedValue.upperBound)
+        self.step = step
+        self.nDecimal = nDecimal
     }
-    
-    
+
     var body: some View {
-        VStack(spacing: 0) {
+        VStack {
             HStack {
-                Text(String(format: "%.1f", minMax.lowerBound))
-                RangeSlider(range: $rangeValue, in : minMax)
-                    .frame(height: 30)
-                Text(String(format: "%.1f", minMax.upperBound))
+                TextField("Lower", value: $lowerValue, format: .number)
+                    .keyboardType(.decimalPad)
+                    .focused($focusedField, equals: .lower)
+                Spacer()
+                Text(title)
+                Spacer()
+                TextField("Upper", value: $upperValue, format: .number)
+                    .keyboardType(.decimalPad)
+                    .focused($focusedField, equals: .upper)
+                    .multilineTextAlignment(.trailing)
             }
-            TextField("Body mass", value: $lowerValue, format: .number.precision(.fractionLength(1)))
-            TextField("Body mass", value: $upperValue, format: .number.precision(.fractionLength(1)))
-            Spacer()
+            RangeSlider(range: $rangeValue, in: minMax, step: step)
+        
+            .onChange(of: rangeValue) {
+                lowerValue = rangeValue.lowerBound
+                upperValue = rangeValue.upperBound
+            }
         }
-        .onChange(of: rangeValue) {
-            lowerValue = rangeValue.lowerBound
-            upperValue = rangeValue.upperBound
-        }
-        .onChange(of: lowerValue) {
-            rangeValue = lowerValue...upperValue
-        }
-        .onChange(of: upperValue) {
-            rangeValue = lowerValue...upperValue
-        }
-        .onAppear() {
-            rangeValue = max(rangeValue.lowerBound, minMax.lowerBound)...min(rangeValue.upperBound, minMax.upperBound)
+        
+        .onChange(of: focusedField) {
+            // Only validate when focus is lost
+            if focusedField == nil {
+                let clampedMin = min(max(lowerValue, minMax.lowerBound), upperValue)
+                let roundedMin = Double(String(format: "%.\(nDecimal)f", clampedMin)) ?? 0
+                let clampedMax = max(min(upperValue, minMax.upperBound), lowerValue)
+                let roundedMax = Double(String(format: "%.\(nDecimal)f", clampedMax)) ?? 0
+                rangeValue = roundedMin...roundedMax
+                lowerValue = rangeValue.lowerBound
+                upperValue = rangeValue.upperBound
+            }
         }
     }
 }
 
+
 #Preview {
     @Previewable @State var rangeValue = 0...50.0
-    SettableRangeSlider(minMax: 0...100.0, rangeValue: $rangeValue)
+    SettableRangeSlider("test", rangeValue: $rangeValue, minMax: 0...100.0)
 }

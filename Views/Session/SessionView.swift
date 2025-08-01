@@ -9,9 +9,8 @@ import SwiftUI
 
 struct SessionView: View {
     @EnvironmentObject var Manager: SessionManager
-    var CurrentSession: DrinkingSession {
-        return Manager.CurrentDrinkingSession ?? DrinkingSession(startTime: Date.now)
-    }
+    @EnvironmentObject var CurrentSession: DrinkingSession
+        
     @State var graphShowing: Bool = false
     @State var showingAddDrink: Bool = false
     var body: some View {
@@ -42,7 +41,7 @@ struct SessionView: View {
                 }
                 .sheet(isPresented: $showingAddDrink) {
                     NavigationStack {
-                        AddDrinkView(isShowing: $showingAddDrink)
+                        AddDrinkView()
                     }
                 }
                 .padding()

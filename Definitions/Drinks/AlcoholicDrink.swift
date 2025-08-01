@@ -27,13 +27,15 @@ import Foundation
 
 
 struct AlcoholicDrink : Identifiable, Equatable, Codable, Hashable, Taggable {
-    var id : Int
-    var name: String
+    var id : Int = 0
+    var name: String = ""
     var created_user_id : Int = 1
     var create_time = Date()
     var description: String? = nil
-    var ingredients: [IngredientWrapper]
+    var ingredients: [IngredientWrapper] = []
     var tags: [Tag] = []
+    
+    init() {}
     
     init(id: Int, name: String, ingredients: [(DrinkIngredient, Double)], tags: [Tag] = []) {
         self.id = id
@@ -150,6 +152,8 @@ struct AlcoholicDrink : Identifiable, Equatable, Codable, Hashable, Taggable {
         func info() -> String {
             return ("\(ingredientType.name), \(volume) mL, \(ingredientType.ABV)% Alcohol, \(ingredientType.sugarPercent)% sugar\n")
         }
+        
+        static var Sample = IngredientWrapper(ingredientType: .Sample, volume: 100)
     }
     
     enum DrinkingMethod {
@@ -162,7 +166,7 @@ struct AlcoholicDrink : Identifiable, Equatable, Codable, Hashable, Taggable {
         Array(DrinkDictionary.keys).sorted()
     }
     
-    static var Sample = AlcoholicDrink(id: 1, name: "Sample Drink", ingredients: [(DrinkIngredient.Sample, 100)])
+    static var Sample = AlcoholicDrink(id: 1, name: "Jagermeister Shot", ingredients: [(DrinkIngredient.Sample, 30)])
 }
 
 struct AlcoholicDrinkOverview : Codable, Hashable, Identifiable {

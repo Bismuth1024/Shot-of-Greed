@@ -35,14 +35,27 @@ import Foundation
 
 struct DrinkIngredient : Hashable, Equatable, Codable, Identifiable, Taggable
 {
-    var id: Int
+    var id: Int = 0
     var created_user_id : Int = 1
     var create_time = Date()
     var description: String? = nil
-    var name: String
-    var ABV: Double
-    var sugarPercent: Double
-    var tags: [Tag]
+    var name: String = ""
+    var ABV: Double = 0
+    var sugarPercent: Double = 0
+    var tags: [Tag] = []
+    
+    init(id: Int = 0, created_user_id: Int = 1, create_time: Date = Date(), description: String? = nil, name: String = "", ABV: Double = 0, sugarPercent: Double = 0, tags: [Tag] = []) {
+        self.id = id
+        self.created_user_id = created_user_id
+        self.create_time = create_time
+        self.description = description
+        self.name = name
+        self.ABV = ABV
+        self.sugarPercent = sugarPercent
+        self.tags = tags
+    }
+    
+    init() {}
         
     static func == (lhs: DrinkIngredient, rhs: DrinkIngredient) -> Bool {
         return lhs.name == rhs.name && lhs.ABV == rhs.ABV && lhs.sugarPercent == rhs.sugarPercent && lhs.tags == rhs.tags
@@ -104,7 +117,7 @@ struct DrinkIngredient : Hashable, Equatable, Codable, Identifiable, Taggable
     
     static var ABVOptions : [Double] = (0...200).map{Double($0)/2}
     
-    static var Sample = DrinkIngredient(id: 1, name: "Sample Name", ABV: 20, sugarPercent: 10, tags: [])
+    static var Sample = DrinkIngredient(id: 0, name: "Jagermeister", ABV: 35, sugarPercent: 13.2, tags: [])
     
     /*
     static func loadCustomIngredients() {

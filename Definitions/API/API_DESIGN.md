@@ -348,6 +348,23 @@ We need authentication as this session has to be owned by a particular user
 
 - Quantity may be unneccessary but I just keep it for now
 
+### PATCH /sessions/:session_id/sessiondrinks/:session_drink_id
+
+#### Description
+
+Amends the finish time of a session drink (usually used once a drink is finished)
+
+**Authentication: REQUIRED** 
+We need authentication as this session has to be owned by a particular user
+
+#### Body Parameters
+
+- end_time: time at which the drink should end (defaults to current time if none provided)
+
+#### Response
+
+- 204: success
+
 ### DELETE /sessions/:session_id
 
 #### Description
@@ -394,4 +411,20 @@ none
 
 - Currently returns a 500 for no session of that ID under the user, as this is a sql error - should it be 400?
 
+## Tags
 
+### GET /tags
+
+#### Description
+
+Fetches all tags
+
+**Authentication: NOT REQUIRED**
+
+#### Query Parameters
+
+- type: type of tags to fetch: drink, ingredient, or all
+
+#### Response
+
+- 200: array of tag objects 

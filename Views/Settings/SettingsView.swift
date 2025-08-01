@@ -12,29 +12,23 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section(
-                    content: {
-                        CustomNavigationLink("BAC Settings", value: CurrentViewWrapper.viewEnum.BACSettings)
-                    }, header: {
-                        Text("")
+                Section("") {
+                    NavigationLink("BAC Settings") {
+                        BACSettingsView()
                     }
-                )
+                }
                 
-                Section(
-                    content: {
-                        CustomNavigationLink("Custom Ingredients", value: CurrentViewWrapper.viewEnum.customIngredients)
-                    }, header: {
-                        
+                Section("") {
+                    NavigationLink("Custom Ingredients") {
+                        CustomIngredientsView()
                     }
-                )
+                }
                 
-                Section (
-                    content: {
-                        CustomNavigationLink("Custom Drinks", value: CurrentViewWrapper.viewEnum.customDrinks)
-                    }, header: {
-                        
+                Section("") {
+                    NavigationLink("Custom Drinks") {
+                        CustomDrinksView()
                     }
-                )
+                }
                 
                 Section {
                     Button("debug") {
@@ -50,22 +44,6 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
-            .navigationDestination(for: CurrentViewWrapper.viewEnum.self) {v in
-                switch v {
-                case .BACSettings:
-                    BACSettingsView()
-                        .navigationTitle("BAC Settings")
-                case .customDrinks:
-                    CustomDrinksView()
-                        .navigationTitle("Custom Drinks")
-                case .customIngredients:
-                    CustomIngredientsView()
-                        .navigationTitle("Custom Ingredients")
-                default:
-                    EmptyView()
-                }
-            }
-            
         }
         /*
         .navigationDestination(for: AlcoholicDrink.self) { drink in

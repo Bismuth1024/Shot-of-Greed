@@ -7,7 +7,8 @@
 
 import Foundation
 
-class DrinkingSession : ObservableObject, Codable {
+class DrinkingSession : ObservableObject, Codable, Identifiable {
+    var id: Int = 1
     @Published var startTime: Date = Date()
     @Published var endTime: Date? = nil
     @Published var drinks: [SessionDrinkWrapper] = []
@@ -20,9 +21,7 @@ class DrinkingSession : ObservableObject, Codable {
         var quantity: Int
         
         //Because this should be unique
-        var id : Date {
-            startTime
-        }
+        var id : Int = 1
         
         init(drink: AlcoholicDrink, quantity: Int = 1, startTime: Date, endTime: Date? = nil) {
             self.drink = drink
@@ -56,12 +55,12 @@ class DrinkingSession : ObservableObject, Codable {
     }
     
     enum CodingKeys: CodingKey {
-        case startTime, endTime, drinks
+        case id, startTime, endTime, drinks
     }
     
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        
+        try container.encode(id, forKey: .id)
         try container.encode(startTime, forKey: .startTime)
         try container.encode(endTime, forKey: .endTime)
         try container.encode(drinks, forKey: .drinks)
@@ -69,6 +68,7 @@ class DrinkingSession : ObservableObject, Codable {
     
     required init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(Int.self, forKey: .id)
         startTime = try container.decode(Date.self, forKey: .startTime)
         endTime = try container.decode(Date?.self, forKey: .endTime)
         drinks = try container.decode([SessionDrinkWrapper].self, forKey: .drinks)
@@ -80,6 +80,10 @@ class DrinkingSession : ObservableObject, Codable {
         self.startTime = startTime
         self.endTime = nil
         self.drinks = []
+    }
+    
+    func addDrink(_ drink: SessionDrinkWrapper) {
+        drinks.append(drink)
     }
     
     

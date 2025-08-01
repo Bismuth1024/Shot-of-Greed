@@ -43,6 +43,9 @@ extension Array: QueryStringConvertible where Element: QueryStringConvertible {
 extension URLQueryItem {
     static func optional<T: QueryStringConvertible>(_ name: String, _ value: T?) -> URLQueryItem? {
         guard let value else { return nil }
+        if let array = value as? [any QueryStringConvertible], array.isEmpty {
+            return nil
+        }
         return URLQueryItem(name: name, value: value.queryStringValue)
     }
 }

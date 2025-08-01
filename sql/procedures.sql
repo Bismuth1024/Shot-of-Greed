@@ -238,14 +238,15 @@ DELIMITER ;
 DELIMITER //
 
 CREATE PROCEDURE createSession(
-	IN p_user_id INT
+	IN p_user_id INT,
+	IN p_start_time DATETIME
 )
 
 MODIFIES SQL DATA
 
 BEGIN
-	INSERT INTO Sessions (created_user_id)
-	VALUES (p_user_id);
+	INSERT INTO Sessions (created_user_id, start_time)
+	VALUES (p_user_id, p_start_time);
 
 	IF ROW_COUNT() = 0 THEN
 	    SIGNAL SQLSTATE '45000'
@@ -295,6 +296,41 @@ DELIMITER ;
 
 ------------------------------------------------------------------------------------------
 
+DELIMITER //
+
+CREATE PROCEDURE finishSessionDrink(
+	IN p_pairing_id INT,
+	IN p_user_id INT,
+	IN p_end_time DATETIME
+)
+
+MODIFIES SQL DATA
+
+BEGIN
+	# Check that this sessiondrink pairing belongs to the user's session
+	IF NOT EXISTS (
+		SELECT 1 FROM SessionDrinks sd
+		JOIN Sessions s ON sd.session_id = s.session_id
+		WHERE s.created_user_id = p_user_id
+		AND sd.pairing_id = p_pairing_id
+	) THEN
+		SIGNAL SQLSTATE '45000'
+		SET MESSAGE_TEXT = 'The session drink is invalid or does not belong to the given user';
+	END IF;
+
+	UPDATE SessionDrinks
+	SET end_time = p_end_time
+	WHERE pairing_id = p_pairing_id;
+
+	IF ROW_COUNT() = 0 THEN
+	    SIGNAL SQLSTATE '45000'
+    	SET MESSAGE_TEXT = 'Drink could not be ended in session (probably bad ID)';
+	END IF;
+END //
+
+DELIMITER ;
+
+------------------------------------------------------------------------------------------
 DELIMITER //
 
 CREATE PROCEDURE removeDrinkFromSession(

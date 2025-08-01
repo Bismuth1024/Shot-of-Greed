@@ -8,12 +8,12 @@
 import SwiftUI
 
 struct BACSettingsView: View {
-    @AppStorage("bodyMass") var bodyMass: Double = Settings.Defaults["bodyMass"] as! Double
-    @AppStorage("massUnits") var massUnits: String = Settings.Defaults["massUnits"] as! String
-    @AppStorage("sex") var sex: String = Settings.Defaults["sex"] as! String
-    @AppStorage("age") var age: Double = Settings.Defaults["age"] as! Double
-    @AppStorage("height") var height: Double = Settings.Defaults["height"] as! Double
-    @AppStorage("vdManual") var isVdManual: Bool = Settings.Defaults["vdManual"] as! Bool
+    @AppStorage("bodyMass") var bodyMass: Double = Settings.getValue(key: "bodyMass")
+    @AppStorage("massUnits") var massUnits: String = Settings.getValue(key: "massUnits")
+    @AppStorage("sex") var sex: String = Settings.getValue(key: "sex")
+    @AppStorage("age") var age: Double = Settings.getValue(key: "age")
+    @AppStorage("height") var height: Double = Settings.getValue(key: "height")
+    @AppStorage("vdManual") var isVdManual: Bool = Settings.getValue(key: "vdManual")
 
     var allPhysiology: [String] {[
         bodyMass.description,
@@ -23,15 +23,14 @@ struct BACSettingsView: View {
         height.description
     ]}
     
-    @AppStorage("vd") var V_d: Double = Settings.Defaults["vd"] as! Double
-    @AppStorage("t_step") var t_step: Double = Settings.Defaults["t_step"] as! Double
-    @AppStorage("k_stomach") var k_stomach: Double = Settings.Defaults["k_stomach"] as! Double
-    @AppStorage("k_blood") var k_blood: Double = Settings.Defaults["k_blood"] as! Double
-    @AppStorage("m_blood") var m_blood: Double = Settings.Defaults["m_blood"] as! Double
-    @AppStorage("BACextrapolationTarget") var BACextrapolationTarget: Double = Settings.Defaults["BACextrapolationTarget"] as! Double
+    @AppStorage("vd") var V_d: Double = Settings.getValue(key: "vd")
+    @AppStorage("t_step") var t_step: Double = Settings.getValue(key: "t_step")
+    @AppStorage("k_stomach") var k_stomach: Double = Settings.getValue(key: "k_stomach")
+    @AppStorage("k_blood") var k_blood: Double = Settings.getValue(key: "k_blood")
+    @AppStorage("m_blood") var m_blood: Double = Settings.getValue(key: "m_blood")
+    @AppStorage("BACextrapolationTarget") var BACextrapolationTarget: Double = Settings.getValue(key: "BACextrapolationTarget")
     
     @State var isConfirmingDefault = false
-    
     
     var body: some View {
         Form {
